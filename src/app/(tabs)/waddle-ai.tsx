@@ -58,24 +58,25 @@ export default function WaddleAIScreen() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1"
-                keyboardVerticalOffset={90}
+                keyboardVerticalOffset={100}
             >
                 {/* Header */}
-                <View className="px-6 py-4 border-b border-slate-100 bg-white flex-row items-center justify-between">
+                <View className="px-6 py-4 border-b border-slate-100 bg-white flex-row items-center justify-between z-10">
                     <Text className="text-xl font-bold text-slate-800">My Waddle</Text>
                     <View className="w-8 h-8 bg-blue-50 rounded-full items-center justify-center overflow-hidden border border-blue-100">
                         <WaddleMascot size={24} mood="focused" />
                     </View>
                 </View>
 
-                {/* Chat Area */}
+                {/* Messages List (Takes remaining space) */}
                 <ScrollView
                     ref={scrollViewRef}
-                    contentContainerStyle={{ padding: 20, paddingBottom: 20 }}
-                    className="flex-1"
+                    onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                    className="flex-1 px-4"
+                    contentContainerStyle={{ paddingBottom: 20, paddingTop: 20 }}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Waddle Intro Animation/Avatar could go here */}
+                    {/* Waddle Intro Animation */}
                     <View className="items-center mb-6 opacity-50">
                         <WaddleMascot size={80} mood={isTyping ? "focused" : "idle"} />
                     </View>
@@ -106,30 +107,29 @@ export default function WaddleAIScreen() {
                     )}
                 </ScrollView>
 
-                {/* Input Area */}
-                <View className="p-4 bg-white border-t border-slate-100 pb-8">
-                    <View className="flex-row items-center bg-slate-50 rounded-3xl px-4 py-2 border border-slate-200">
-                        <TextInput
-                            className="flex-1 text-base text-slate-800 mr-2 min-h-[44px]"
-                            placeholder="Type a message..."
-                            placeholderTextColor="#94A3B8"
-                            value={inputText}
-                            onChangeText={setInputText}
-                            multiline
-                            maxLength={500}
-                        />
-                        <TouchableOpacity
-                            onPress={sendMessage}
-                            disabled={!inputText.trim()}
-                            className={clsx(
-                                "w-10 h-10 rounded-full items-center justify-center",
-                                inputText.trim() ? "bg-[#4A90E2]" : "bg-slate-200"
-                            )}
-                        >
-                            <Ionicons name="arrow-up" size={20} color="white" />
-                        </TouchableOpacity>
-                    </View>
+                {/* Input Bar (Sticks to keyboard) */}
+                <View className="p-4 bg-white border-t border-slate-100 flex-row items-center pb-6">
+                    <TextInput
+                        className="flex-1 bg-slate-50 px-4 py-3 rounded-2xl text-slate-800 mr-3 text-base border border-slate-200 min-h-[50px]"
+                        placeholder="Talk to Waddle..."
+                        placeholderTextColor="#94A3B8"
+                        value={inputText}
+                        onChangeText={setInputText}
+                        multiline
+                        maxLength={500}
+                    />
+                    <TouchableOpacity
+                        onPress={sendMessage}
+                        disabled={!inputText.trim()}
+                        className={clsx(
+                            "w-12 h-12 rounded-full items-center justify-center shadow-sm",
+                            inputText.trim() ? "bg-[#4A90E2]" : "bg-slate-200"
+                        )}
+                    >
+                        <Ionicons name="arrow-up" size={24} color="white" />
+                    </TouchableOpacity>
                 </View>
+
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
