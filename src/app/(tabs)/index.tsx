@@ -6,8 +6,8 @@ import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/useAppStore';
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+import { format } from 'date-fns';
+import { ar } from 'date-fns/locale';
 
 export default function DashboardScreen() {
     const habits = useAppStore(state => state.habits);
@@ -19,9 +19,9 @@ export default function DashboardScreen() {
     };
 
     const sections = [
-        { title: 'Morning', data: habits.filter(h => h.time === 'Morning') },
-        { title: 'Afternoon', data: habits.filter(h => h.time === 'Afternoon') },
-        { title: 'Evening', data: habits.filter(h => h.time === 'Evening') },
+        { title: 'الصباح', data: habits.filter(h => h.time === 'Morning') },
+        { title: 'بعد الظهر', data: habits.filter(h => h.time === 'Afternoon') },
+        { title: 'المساء', data: habits.filter(h => h.time === 'Evening') },
     ];
 
     // Generate Infinite Dates: Past 30 days + Next 335 days (Total 365)
@@ -33,7 +33,7 @@ export default function DashboardScreen() {
         d.setDate(today.getDate() - 30 + i);
         return {
             id: i.toString(),
-            day: DAYS[d.getDay()],
+            day: format(d, 'EEE', { locale: ar }), // Arabic Day (Sabt, Ahad)
             date: d.getDate(),
             fullDate: d,
             isToday: d.getDate() === currentDay && d.getMonth() === today.getMonth()
@@ -58,7 +58,7 @@ export default function DashboardScreen() {
                     "text-[10px] font-bold uppercase mb-1",
                     item.date === selectedDate ? "text-white" : "text-slate-400"
                 )}>
-                    {item.day.toUpperCase()}
+                    {item.day}
                 </Text>
                 <Text className={clsx(
                     "text-xl font-black",
@@ -70,14 +70,18 @@ export default function DashboardScreen() {
         );
     };
 
+    const currentMonthArabic = format(new Date(), 'MMM yyyy', { locale: ar });
+
     return (
         <SafeAreaView className="flex-1 bg-slate-50" edges={['top']}>
 
-            {/* Header: Title & Mascot */}
-            <View className="flex-row justify-between items-center px-6 pt-2 mb-2">
-                <View>
-                    <Text className="text-slate-400 font-bold uppercase tracking-wider text-xs mb-1">Feb 2026</Text>
-                    <Text className="text-3xl font-black text-slate-800">Today</Text>
+            {/* Header: Title & Mascot (RTL: Flex Row Reverse) */}
+            <View className="flex-row-reverse justify-between items-center px-6 pt-2 mb-2">
+                <View className="items-end">
+                    <Text className="text-slate-400 font-bold uppercase tracking-wider text-xs mb-1">
+                        {currentMonthArabic}
+                    </Text>
+                    <Text className="text-3xl font-black text-slate-800">اليوم</Text>
                 </View>
                 <View className="w-10 h-10 bg-blue-50 rounded-full items-center justify-center overflow-hidden border border-blue-100">
                     <WaddleMascot size={32} mood="happy" />
@@ -89,6 +93,7 @@ export default function DashboardScreen() {
                 <FlatList
                     data={DATES}
                     horizontal
+                    inverted={true} // RTL Scrolling
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 16 }}
                     keyExtractor={(item) => item.id}
@@ -106,8 +111,8 @@ export default function DashboardScreen() {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
                 renderSectionHeader={({ section: { title } }) => (
-                    <View className="mb-3 mt-4 flex-row items-center">
-                        <Text className="text-slate-500 font-bold uppercase text-xs tracking-widest pl-1">
+                    <View className="mb-3 mt-4 flex-row-reverse items-center">
+                        <Text className="text-slate-500 font-bold uppercase text-xs tracking-widest px-2">
                             {title}
                         </Text>
                     </View>

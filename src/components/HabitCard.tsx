@@ -44,14 +44,14 @@ export function HabitCard({ title, icon, time, streak, completed, onToggle }: Ha
         >
             <View
                 className={clsx(
-                    "bg-white p-6 rounded-[32px] flex-row items-center justify-between shadow-lg border h-32 w-full mb-1",
+                    "bg-white p-6 rounded-[32px] flex-row-reverse items-center justify-between shadow-lg border h-32 w-full mb-1",
                     completed ? "border-green-500 bg-green-50" : "border-slate-100"
                 )}
             >
-                <View className="flex-row items-center flex-1">
-                    {/* Icon Box - Grand Luxury */}
+                <View className="flex-row-reverse items-center flex-1">
+                    {/* Icon Box - Grand Luxury (Right Side in RTL) */}
                     <View className={clsx(
-                        "w-20 h-20 rounded-[28px] items-center justify-center mr-6",
+                        "w-20 h-20 rounded-[28px] items-center justify-center ml-6", // changed mr-6 to ml-6 for RTL
                         completed ? "bg-green-100" : "bg-[#F1F5F9]"
                     )}>
                         <Ionicons
@@ -61,24 +61,24 @@ export function HabitCard({ title, icon, time, streak, completed, onToggle }: Ha
                         />
                     </View>
 
-                    {/* Text Info */}
-                    <View className="justify-center flex-1">
+                    {/* Text Info (Left of Icon in RTL) */}
+                    <View className="justify-center flex-1 items-end">
                         <Text className={clsx(
-                            "text-2xl font-black text-slate-800 mb-1",
+                            "text-2xl font-black text-slate-800 mb-1 text-right",
                             completed && "line-through text-slate-400"
                         )}>
                             {title}
                         </Text>
-                        <View className="flex-row items-center">
+                        <View className="flex-row-reverse items-center">
                             <Ionicons name="flame" size={12} color="#FF9F43" />
-                            <Text className="text-xs text-slate-400 font-bold uppercase tracking-wider ml-1">
-                                {streak} Day Streak
+                            <Text className="text-xs text-slate-400 font-bold uppercase tracking-wider mr-1">
+                                {streak} أيام متتالية
                             </Text>
                         </View>
                     </View>
                 </View>
 
-                {/* Checkbox - Purely Visual if Swipe is primary, but stick to design */}
+                {/* Checkbox */}
                 <TouchableOpacity onPress={() => {
                     onToggle();
                     Haptics.selectionAsync();

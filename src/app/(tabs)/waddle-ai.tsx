@@ -5,7 +5,8 @@ import { useState, useRef } from 'react';
 import { WaddleMascot } from '../../components/WaddleMascot';
 import clsx from 'clsx';
 import { useRouter } from 'expo-router';
-import { useAppStore, Blueprint } from '../../store/useAppStore';
+import { useAppStore } from '../../store/useAppStore';
+import { supabase } from '../../lib/supabase';
 
 // Message Type
 interface Message {
@@ -13,15 +14,15 @@ interface Message {
     text: string;
     isUser: boolean;
     isBlueprint?: boolean;
-    blueprintData?: Blueprint;
+    blueprintData?: any[]; // Array of habits from AI
 }
 
 export default function WaddleAIScreen() {
     const router = useRouter();
-    const setActiveBlueprint = useAppStore(state => state.setActiveBlueprint);
+    const addHabit = useAppStore(state => state.addHabit);
 
     const [messages, setMessages] = useState<Message[]>([
-        { id: '1', text: "Hi there! I'm Waddle. Tell me a goal like 'I want to sleep better' or 'I want to read more'.", isUser: false }
+        { id: '1', text: "أهلاً بك! أنا وادل 🐧. أخبرني بهدفك وسأقوم بتصميم خطة عادات مخصصة لك.", isUser: false }
     ]);
     const [inputText, setInputText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -33,56 +34,7 @@ export default function WaddleAIScreen() {
         }, 100);
     };
 
-    const generateBlueprint = (text: string): Blueprint | null => {
-        const lower = text.toLowerCase();
-        if (lower.includes('sleep')) {
-            return {
-                id: 'sleep-protocol',
-                title: 'Deep Sleep Protocol',
-                icon: 'moon',
-                description: 'Optimized rhythm to improve recovery by 30%.',
-                frequency: 'Daily',
-                duration: '45 Mins',
-                time: 'Evening (10 PM)'
-            };
-        }
-        if (lower.includes('workout') || lower.includes('gym') || lower.includes('exercise')) {
-            return {
-                id: 'strength-foundation',
-                title: 'Strength Foundation',
-                icon: 'barbell',
-                description: 'Compound movements to build core stability.',
-                frequency: '3x / Week',
-                duration: '60 Mins',
-                time: 'Morning'
-            };
-        }
-        if (lower.includes('read') || lower.includes('book')) {
-            return {
-                id: 'mind-expansion',
-                title: 'Mind Expansion',
-                icon: 'book',
-                description: 'Daily reading block to boost focus and clarity.',
-                frequency: 'Daily',
-                duration: '20 Mins',
-                time: 'Evening'
-            };
-        }
-        if (lower.includes('focus') || lower.includes('work')) {
-            return {
-                id: 'deep-work-block',
-                title: 'Deep Work Block',
-                icon: 'laptop-outline',
-                description: 'Distraction-free session for peak productivity.',
-                frequency: 'Daily',
-                duration: '90 Mins',
-                time: 'Morning'
-            };
-        }
-        return null; // No specific blueprint
-    };
-
-    const sendMessage = () => {
+    const sendMessage = async () => {
         if (!inputText.trim()) return;
 
         const userText = inputText.trim();
@@ -97,38 +49,57 @@ export default function WaddleAIScreen() {
         scrollToBottom();
         setIsTyping(true);
 
-        // AI Logic
-        setTimeout(() => {
-            const blueprint = generateBlueprint(userText);
-            let aiMsg: Message;
+        try {
+            // Real AI Call
+            const { data, error } = await supabase.functions.invoke('generate-habits', {
+                body: { goal: userText }
+            });
 
-            if (blueprint) {
-                // Determine AI response text based on blueprint
-                aiMsg = {
+            if (error) throw error;
+
+            if (data && Array.isArray(data) && data.length > 0) {
+                const aiMsg: Message = {
                     id: (Date.now() + 1).toString(),
-                    text: "I've designed a custom plan for that. It's built to fit your rhythm. Tap below to see the details!",
+                    text: "لقد قمت بتصميم هذه الخطة بناءً على هدفك. اضغط على الزر أدناه لاعتمادها.",
                     isUser: false,
                     isBlueprint: true,
-                    blueprintData: blueprint
+                    blueprintData: data
                 };
+                setMessages(prev => [...prev, aiMsg]);
             } else {
-                // Generic response
-                aiMsg = {
+                setMessages(prev => [...prev, {
                     id: (Date.now() + 1).toString(),
-                    text: "That sounds like a great goal! I'm still learning how to build plans for that, but try asking me about Sleep, Reading, or Workouts! 🐧",
-                    isUser: false,
-                };
+                    text: "عذراً، لم أستطع فهم ذلك. هل يمكنك المحاولة مرة أخرى بكلمات أوضح؟",
+                    isUser: false
+                }]);
             }
-
-            setMessages(prev => [...prev, aiMsg]);
+        } catch (err) {
+            console.error(err);
+            setMessages(prev => [...prev, {
+                id: (Date.now() + 1).toString(),
+                text: "حدث خطأ أثناء الاتصال بالدماغ الإلكتروني. يرجى المحاولة لاحقاً.",
+                isUser: false
+            }]);
+        } finally {
             setIsTyping(false);
             scrollToBottom();
-        }, 1500);
+        }
     };
 
-    const handleViewBlueprint = (blueprint: Blueprint) => {
-        setActiveBlueprint(blueprint);
-        router.push('/ai-blueprint');
+    const handleAcceptPlan = (habits: any[]) => {
+        // Add all habits to store
+        habits.forEach((h, index) => {
+            addHabit({
+                id: Date.now().toString() + index,
+                title: h.title,
+                icon: h.icon || 'star', // fallback
+                time: 'Morning', // default for now, AI could provide this
+                streak: 0,
+                completed: false
+            });
+        });
+
+        router.push('/(tabs)');
     };
 
     return (
@@ -138,9 +109,9 @@ export default function WaddleAIScreen() {
                 className="flex-1"
                 keyboardVerticalOffset={80}
             >
-                {/* Header */}
-                <View className="px-6 py-4 border-b border-slate-100 bg-white flex-row items-center justify-between z-10">
-                    <Text className="text-xl font-bold text-slate-800">My Waddle</Text>
+                {/* Header (RTL) */}
+                <View className="px-6 py-4 border-b border-slate-100 bg-white flex-row-reverse items-center justify-between z-10">
+                    <Text className="text-xl font-bold text-slate-800">مساعد وادل</Text>
                     <View className="w-8 h-8 bg-blue-50 rounded-full items-center justify-center overflow-hidden border border-blue-100">
                         <WaddleMascot size={24} mood="focused" />
                     </View>
@@ -160,9 +131,19 @@ export default function WaddleAIScreen() {
                     </View>
 
                     {messages.map((msg) => (
-                        <View key={msg.id} className={clsx("mb-6 flex-row", msg.isUser ? "justify-end" : "justify-start")}>
+                        <View key={msg.id} className={clsx("mb-6 flex-row-reverse", msg.isUser ? "justify-start" : "justify-end")}>
+                            {/* Avatar Logic: User Right, AI Left... wait. standard RTL: User Right? No. 
+                                WhatsApp RTL: Me (Right), Others (Left). 
+                                My User Box: justify-start (Left)? No.
+                                Let's follow: User -> Right (End), AI -> Left (Start).
+                                So flex-row-reverse + justify-start = Right?? No.
+                                flex-row-reverse: Start is Right. End is Left.
+                                msg.isUser (Me) -> Should be Right (Start). -> justify-start
+                                msg.isAI (Bot) -> Should be Left (End). -> justify-end
+                             */}
+
                             {!msg.isUser && (
-                                <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-2 self-end mb-1">
+                                <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center ml-2 self-end mb-1">
                                     <WaddleMascot size={20} mood="happy" />
                                 </View>
                             )}
@@ -171,12 +152,12 @@ export default function WaddleAIScreen() {
                                 className={clsx(
                                     "p-4 rounded-2xl max-w-[85%]",
                                     msg.isUser
-                                        ? "bg-[#4A90E2] rounded-tr-none"
-                                        : "bg-white border border-slate-100 rounded-tl-none shadow-sm"
+                                        ? "bg-[#4A90E2] rounded-tl-none self-end" // User Blue
+                                        : "bg-white border border-slate-100 rounded-tr-none shadow-sm self-start" // AI White
                                 )}
                             >
                                 <Text className={clsx(
-                                    "text-base leading-6",
+                                    "text-base leading-6 text-right", // RTL Text
                                     msg.isUser ? "text-white font-medium" : "text-slate-700"
                                 )}>
                                     {msg.text}
@@ -185,24 +166,27 @@ export default function WaddleAIScreen() {
                                 {/* Blueprint Card Attachment */}
                                 {msg.isBlueprint && msg.blueprintData && (
                                     <View className="mt-3 bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
-                                        <View className="flex-row items-center mb-2">
+                                        <View className="flex-row-reverse items-center mb-2">
                                             <Ionicons name="sparkles" size={16} color="#FCD34D" />
-                                            <Text className="text-white font-bold text-xs uppercase tracking-widest ml-2">
-                                                HABIT ARCHITECT
+                                            <Text className="text-white font-bold text-xs uppercase tracking-widest mr-2">
+                                                خطة مقترحة
                                             </Text>
                                         </View>
-                                        <Text className="text-white font-bold text-lg mb-1">
-                                            {msg.blueprintData.title}
-                                        </Text>
-                                        <Text className="text-slate-400 text-sm mb-4">
-                                            {msg.blueprintData.description}
-                                        </Text>
+
+                                        {/* Habits List */}
+                                        {msg.blueprintData.map((habit: any, idx: number) => (
+                                            <View key={idx} className="flex-row-reverse items-center mb-2 bg-slate-700/50 p-2 rounded-lg">
+                                                <Ionicons name={habit.icon || 'star'} size={18} color="#FCD34D" />
+                                                <Text className="text-white font-bold mx-2 text-right flex-1">{habit.title}</Text>
+                                            </View>
+                                        ))}
+
                                         <TouchableOpacity
-                                            onPress={() => handleViewBlueprint(msg.blueprintData!)}
-                                            className="bg-[#FCD34D] py-3 rounded-full items-center active:opacity-90"
+                                            onPress={() => handleAcceptPlan(msg.blueprintData!)}
+                                            className="bg-[#FCD34D] py-3 rounded-full items-center active:opacity-90 mt-2"
                                         >
                                             <Text className="text-slate-900 font-bold text-sm uppercase tracking-wide">
-                                                View Full Plan
+                                                اعتماد الخطة
                                             </Text>
                                         </TouchableOpacity>
                                     </View>
@@ -212,17 +196,17 @@ export default function WaddleAIScreen() {
                     ))}
 
                     {isTyping && (
-                        <View className="self-start ml-10 bg-slate-100 px-4 py-2 rounded-full mb-4">
-                            <Text className="text-slate-400 text-xs font-bold tracking-widest">WADDLE IS THINKING...</Text>
+                        <View className="self-end mr-10 bg-slate-100 px-4 py-2 rounded-full mb-4">
+                            <Text className="text-slate-400 text-xs font-bold tracking-widest">وادل يفكر...</Text>
                         </View>
                     )}
                 </ScrollView>
 
-                {/* Input Bar */}
-                <View className="p-4 bg-white border-t border-slate-100 flex-row items-center pb-6">
+                {/* Input Bar (RTL) */}
+                <View className="p-4 bg-white border-t border-slate-100 flex-row-reverse items-center pb-6">
                     <TextInput
-                        className="flex-1 bg-slate-50 px-4 py-3 rounded-2xl text-slate-800 mr-3 text-base border border-slate-200 min-h-[50px]"
-                        placeholder="Talk to Waddle..."
+                        className="flex-1 bg-slate-50 px-4 py-3 rounded-2xl text-slate-800 ml-3 text-base border border-slate-200 min-h-[50px] text-right"
+                        placeholder="تحدث مع وادل..."
                         placeholderTextColor="#94A3B8"
                         value={inputText}
                         onChangeText={setInputText}
