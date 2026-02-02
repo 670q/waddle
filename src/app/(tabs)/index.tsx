@@ -5,28 +5,17 @@ import { WaddleMascot } from '../../components/WaddleMascot';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import clsx from 'clsx';
-
-// Mock Data
-const INITIAL_HABITS = [
-    { id: '1', title: 'Drink Water', icon: 'water-outline', time: 'Morning', streak: 12, completed: false },
-    { id: '2', title: 'Meditate', icon: 'leaf-outline', time: 'Morning', streak: 5, completed: true },
-    { id: '3', title: 'Deep Work', icon: 'briefcase-outline', time: 'Afternoon', streak: 3, completed: false },
-    { id: '4', title: 'No Sugar', icon: 'nutrition-outline', time: 'Afternoon', streak: 8, completed: false },
-    { id: '5', title: 'Journal', icon: 'pencil-outline', time: 'Evening', streak: 45, completed: false },
-];
+import { useAppStore } from '../../store/useAppStore';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function DashboardScreen() {
-    const [habits, setHabits] = useState(INITIAL_HABITS);
+    const habits = useAppStore(state => state.habits);
+    const toggleHabit = useAppStore(state => state.toggleHabit);
     const [selectedDate, setSelectedDate] = useState(new Date().getDate());
 
     const toggleComplete = (id: string) => {
-        setHabits(current =>
-            current.map(h =>
-                h.id === id ? { ...h, completed: !h.completed } : h
-            )
-        );
+        toggleHabit(id);
     };
 
     const sections = [
