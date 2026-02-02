@@ -56,7 +56,7 @@ export function HabitCard({ title, icon, time, streak, completed, onToggle }: Ha
                     )}>
                         <Ionicons
                             name={icon as any}
-                            size={38}
+                            size={36}
                             color={completed ? "#22c55e" : "#334155"}
                         />
                     </View>
