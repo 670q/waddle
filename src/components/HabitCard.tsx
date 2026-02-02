@@ -44,20 +44,20 @@ export function HabitCard({ title, icon, time, streak, completed, onToggle }: Ha
         >
             <View
                 className={clsx(
-                    "bg-white p-5 rounded-3xl flex-row items-center justify-between shadow-sm border h-24 w-full",
+                    "bg-white p-5 rounded-[32px] flex-row items-center justify-between shadow-md border h-26 w-full mb-1",
                     completed ? "border-green-500 bg-green-50" : "border-slate-100"
                 )}
             >
                 <View className="flex-row items-center flex-1">
-                    {/* Icon Box - Larger (w-12 h-12 -> w-14 h-14) */}
+                    {/* Icon Box - Larger and Chunky */}
                     <View className={clsx(
-                        "w-14 h-14 rounded-2xl items-center justify-center mr-4",
-                        completed ? "bg-green-100" : "bg-slate-50"
+                        "w-16 h-16 rounded-[24px] items-center justify-center mr-5",
+                        completed ? "bg-green-100" : "bg-[#F1F5F9]"
                     )}>
                         <Ionicons
                             name={icon as any}
-                            size={28}
-                            color={completed ? "#22c55e" : "#64748B"}
+                            size={32}
+                            color={completed ? "#22c55e" : "#334155"}
                         />
                     </View>
 

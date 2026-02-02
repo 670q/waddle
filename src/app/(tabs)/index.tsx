@@ -67,11 +67,11 @@ export default function DashboardScreen() {
             </View>
 
             {/* Horizontal Calendar Strip (Capsule Style) */}
-            <View className="mb-4">
+            <View className="mb-6">
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, justifyContent: 'space-between', width: '100%' }}
+                    contentContainerStyle={{ paddingHorizontal: 16, width: '100%', justifyContent: 'space-between' }}
                     className="flex-row"
                 >
                     {weekDays.map((d, index) => {
@@ -81,19 +81,19 @@ export default function DashboardScreen() {
                                 key={index}
                                 onPress={() => setSelectedDate(d.date)}
                                 className={clsx(
-                                    "items-center justify-center py-3 w-12 rounded-full mx-1",
-                                    isSelected ? "bg-slate-800 shadow-md" : "bg-transparent"
+                                    "items-center justify-center w-14 h-20 rounded-[28px] mx-1",
+                                    isSelected ? "bg-[#1E293B]" : "bg-transparent"
                                 )}
                             >
                                 <Text className={clsx(
                                     "text-[10px] font-bold uppercase mb-1",
-                                    isSelected ? "text-slate-400" : "text-slate-400"
+                                    isSelected ? "text-white" : "text-slate-400"
                                 )}>
                                     {d.day.toUpperCase()}
                                 </Text>
                                 <Text className={clsx(
-                                    "text-lg font-bold",
-                                    isSelected ? "text-white" : "text-slate-800"
+                                    "text-xl font-black",
+                                    isSelected ? "text-white" : "text-slate-400"
                                 )}>
                                     {d.date}
                                 </Text>
@@ -107,7 +107,7 @@ export default function DashboardScreen() {
             <SectionList
                 sections={sections}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+                contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
                 renderSectionHeader={({ section: { title } }) => (
                     <View className="mb-3 mt-4 flex-row items-center">
                         <Text className="text-slate-500 font-bold uppercase text-xs tracking-widest pl-1">

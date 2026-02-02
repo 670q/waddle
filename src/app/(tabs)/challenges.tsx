@@ -50,7 +50,7 @@ export default function ChallengesScreen() {
                         </Text>
 
                         {/* Title */}
-                        <Text className="text-2xl font-black text-white w-2/3 mb-4 leading-tight">
+                        <Text className="text-3xl font-black text-white w-3/4 mb-4 leading-none tracking-tight">
                             {challenge.title}
                         </Text>
 
