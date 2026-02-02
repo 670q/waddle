@@ -2,6 +2,7 @@
   "expo": {
     "name": "temp_init",
     "slug": "temp_init",
+    "scheme": "waddle",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +14,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anas.waddle.final",
+      "infoPlist": {
+        "NSReminderUsageDescription": "Waddle needs this to remind you of your daily habits.",
+        "NSLocalNetworkUsageDescription": "Waddle needs this to connect to the development server."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +27,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anas.waddle.xfinal"
     },
     "web": {
       "favicon": "./assets/favicon.png"
