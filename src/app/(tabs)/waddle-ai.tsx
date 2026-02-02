@@ -1,12 +1,13 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { WaddleMascot } from '../../components/WaddleMascot';
 import clsx from 'clsx';
 import { useRouter } from 'expo-router';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
+import i18n, { isRTL } from '../../i18n';
 
 // Message Type
 interface Message {
@@ -22,7 +23,7 @@ export default function WaddleAIScreen() {
     const addHabit = useAppStore(state => state.addHabit);
 
     const [messages, setMessages] = useState<Message[]>([
-        { id: '1', text: "أهلاً بك! أنا وادل 🐧. أخبرني بهدفك وسأقوم بتصميم خطة عادات مخصصة لك.", isUser: false }
+        { id: '1', text: i18n.t('ai.welcome_msg'), isUser: false }
     ]);
     const [inputText, setInputText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -50,17 +51,24 @@ export default function WaddleAIScreen() {
         setIsTyping(true);
 
         try {
+            console.log('Sending goal to AI:', userText);
+
             // Real AI Call
             const { data, error } = await supabase.functions.invoke('generate-habits', {
                 body: { goal: userText }
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase Function Error:', error);
+                throw error;
+            }
+
+            console.log('AI Response:', data);
 
             if (data && Array.isArray(data) && data.length > 0) {
                 const aiMsg: Message = {
                     id: (Date.now() + 1).toString(),
-                    text: "لقد قمت بتصميم هذه الخطة بناءً على هدفك. اضغط على الزر أدناه لاعتمادها.",
+                    text: i18n.t('ai.plan_card_title'), // "Plan Generated..."
                     isUser: false,
                     isBlueprint: true,
                     blueprintData: data
@@ -69,15 +77,17 @@ export default function WaddleAIScreen() {
             } else {
                 setMessages(prev => [...prev, {
                     id: (Date.now() + 1).toString(),
-                    text: "عذراً، لم أستطع فهم ذلك. هل يمكنك المحاولة مرة أخرى بكلمات أوضح؟",
+                    text: i18n.t('ai.error_msg'),
                     isUser: false
                 }]);
             }
-        } catch (err) {
-            console.error(err);
+        } catch (err: any) {
+            console.error('Catch Error:', err);
+            Alert.alert('AI Error', err.message || JSON.stringify(err));
+
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
-                text: "حدث خطأ أثناء الاتصال بالدماغ الإلكتروني. يرجى المحاولة لاحقاً.",
+                text: "Connection error. Please try again.", // Fallback text
                 isUser: false
             }]);
         } finally {
@@ -107,11 +117,14 @@ export default function WaddleAIScreen() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1"
-                keyboardVerticalOffset={80}
+                keyboardVerticalOffset={80} // Adjust based on tab bar height
             >
-                {/* Header (RTL) */}
-                <View className="px-6 py-4 border-b border-slate-100 bg-white flex-row-reverse items-center justify-between z-10">
-                    <Text className="text-xl font-bold text-slate-800">مساعد وادل</Text>
+                {/* Header */}
+                <View className={clsx(
+                    "px-6 py-4 border-b border-slate-100 bg-white items-center justify-between z-10",
+                    isRTL ? "flex-row-reverse" : "flex-row"
+                )}>
+                    <Text className="text-xl font-bold text-slate-800">{i18n.t('ai.title')}</Text>
                     <View className="w-8 h-8 bg-blue-50 rounded-full items-center justify-center overflow-hidden border border-blue-100">
                         <WaddleMascot size={24} mood="focused" />
                     </View>
@@ -131,19 +144,16 @@ export default function WaddleAIScreen() {
                     </View>
 
                     {messages.map((msg) => (
-                        <View key={msg.id} className={clsx("mb-6 flex-row-reverse", msg.isUser ? "justify-start" : "justify-end")}>
-                            {/* Avatar Logic: User Right, AI Left... wait. standard RTL: User Right? No. 
-                                WhatsApp RTL: Me (Right), Others (Left). 
-                                My User Box: justify-start (Left)? No.
-                                Let's follow: User -> Right (End), AI -> Left (Start).
-                                So flex-row-reverse + justify-start = Right?? No.
-                                flex-row-reverse: Start is Right. End is Left.
-                                msg.isUser (Me) -> Should be Right (Start). -> justify-start
-                                msg.isAI (Bot) -> Should be Left (End). -> justify-end
-                             */}
-
+                        <View key={msg.id} className={clsx(
+                            "mb-6",
+                            isRTL ? "flex-row-reverse" : "flex-row",
+                            msg.isUser ? (isRTL ? "justify-start" : "justify-end") : (isRTL ? "justify-end" : "justify-start")
+                        )}>
                             {!msg.isUser && (
-                                <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center ml-2 self-end mb-1">
+                                <View className={clsx(
+                                    "w-8 h-8 bg-blue-100 rounded-full items-center justify-center mb-1",
+                                    isRTL ? "ml-2 self-end" : "mr-2 self-end"
+                                )}>
                                     <WaddleMascot size={20} mood="happy" />
                                 </View>
                             )}
@@ -152,12 +162,13 @@ export default function WaddleAIScreen() {
                                 className={clsx(
                                     "p-4 rounded-2xl max-w-[85%]",
                                     msg.isUser
-                                        ? "bg-[#4A90E2] rounded-tl-none self-end" // User Blue
-                                        : "bg-white border border-slate-100 rounded-tr-none shadow-sm self-start" // AI White
+                                        ? "bg-[#4A90E2] self-end" + (isRTL ? " rounded-tl-none" : " rounded-tr-none")
+                                        : "bg-white border border-slate-100 shadow-sm self-start" + (isRTL ? " rounded-tr-none" : " rounded-tl-none")
                                 )}
                             >
                                 <Text className={clsx(
-                                    "text-base leading-6 text-right", // RTL Text
+                                    "text-base leading-6",
+                                    isRTL ? "text-right" : "text-left",
                                     msg.isUser ? "text-white font-medium" : "text-slate-700"
                                 )}>
                                     {msg.text}
@@ -166,18 +177,29 @@ export default function WaddleAIScreen() {
                                 {/* Blueprint Card Attachment */}
                                 {msg.isBlueprint && msg.blueprintData && (
                                     <View className="mt-3 bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
-                                        <View className="flex-row-reverse items-center mb-2">
+                                        <View className={clsx("items-center mb-2", isRTL ? "flex-row-reverse" : "flex-row")}>
                                             <Ionicons name="sparkles" size={16} color="#FCD34D" />
-                                            <Text className="text-white font-bold text-xs uppercase tracking-widest mr-2">
-                                                خطة مقترحة
+                                            <Text className={clsx(
+                                                "text-white font-bold text-xs uppercase tracking-widest",
+                                                isRTL ? "mr-2" : "ml-2"
+                                            )}>
+                                                {i18n.t('ai.plan_card_title')}
                                             </Text>
                                         </View>
 
                                         {/* Habits List */}
                                         {msg.blueprintData.map((habit: any, idx: number) => (
-                                            <View key={idx} className="flex-row-reverse items-center mb-2 bg-slate-700/50 p-2 rounded-lg">
+                                            <View key={idx} className={clsx(
+                                                "items-center mb-2 bg-slate-700/50 p-2 rounded-lg",
+                                                isRTL ? "flex-row-reverse" : "flex-row"
+                                            )}>
                                                 <Ionicons name={habit.icon || 'star'} size={18} color="#FCD34D" />
-                                                <Text className="text-white font-bold mx-2 text-right flex-1">{habit.title}</Text>
+                                                <Text className={clsx(
+                                                    "text-white font-bold mx-2 flex-1",
+                                                    isRTL ? "text-right" : "text-left"
+                                                )}>
+                                                    {habit.title}
+                                                </Text>
                                             </View>
                                         ))}
 
@@ -186,7 +208,7 @@ export default function WaddleAIScreen() {
                                             className="bg-[#FCD34D] py-3 rounded-full items-center active:opacity-90 mt-2"
                                         >
                                             <Text className="text-slate-900 font-bold text-sm uppercase tracking-wide">
-                                                اعتماد الخطة
+                                                {i18n.t('ai.accept_btn')}
                                             </Text>
                                         </TouchableOpacity>
                                     </View>
@@ -196,17 +218,26 @@ export default function WaddleAIScreen() {
                     ))}
 
                     {isTyping && (
-                        <View className="self-end mr-10 bg-slate-100 px-4 py-2 rounded-full mb-4">
-                            <Text className="text-slate-400 text-xs font-bold tracking-widest">وادل يفكر...</Text>
+                        <View className={clsx(
+                            "bg-slate-100 px-4 py-2 rounded-full mb-4",
+                            isRTL ? "self-end mr-10" : "self-start ml-10"
+                        )}>
+                            <Text className="text-slate-400 text-xs font-bold tracking-widest">{i18n.t('ai.typing')}</Text>
                         </View>
                     )}
                 </ScrollView>
 
-                {/* Input Bar (RTL) */}
-                <View className="p-4 bg-white border-t border-slate-100 flex-row-reverse items-center pb-6">
+                {/* Input Bar */}
+                <View className={clsx(
+                    "p-4 bg-white border-t border-slate-100 items-center pb-6",
+                    isRTL ? "flex-row-reverse" : "flex-row"
+                )}>
                     <TextInput
-                        className="flex-1 bg-slate-50 px-4 py-3 rounded-2xl text-slate-800 ml-3 text-base border border-slate-200 min-h-[50px] text-right"
-                        placeholder="تحدث مع وادل..."
+                        className={clsx(
+                            "flex-1 bg-slate-50 px-4 py-3 rounded-2xl text-slate-800 text-base border border-slate-200 min-h-[50px]",
+                            isRTL ? "ml-3 text-right" : "mr-3 text-left"
+                        )}
+                        placeholder={i18n.t('ai.placeholder')}
                         placeholderTextColor="#94A3B8"
                         value={inputText}
                         onChangeText={setInputText}

@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import i18n from '../../i18n';
 
 export default function TabLayout() {
     const insets = useSafeAreaInsets();
@@ -32,7 +33,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="index"
                 options={{
-                    title: 'Today',
+                    title: i18n.t('tabs.today'),
                     tabBarIcon: ({ color }) => (
                         <Ionicons name="calendar" size={24} color={color} />
                     ),
@@ -41,7 +42,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="challenges"
                 options={{
-                    title: 'Challenges',
+                    title: i18n.t('tabs.challenges'),
                     tabBarIcon: ({ color }) => (
                         <Ionicons name="trophy" size={24} color={color} />
                     ),
@@ -50,7 +51,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="waddle-ai"
                 options={{
-                    title: 'My Waddle',
+                    title: i18n.t('tabs.ai'),
                     tabBarIcon: ({ color }) => (
                         <Ionicons name="chatbubble-ellipses" size={24} color={color} />
                     ),
@@ -59,7 +60,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="stats"
                 options={{
-                    title: 'Progress',
+                    title: i18n.t('tabs.progress'),
                     tabBarIcon: ({ color }) => (
                         <Ionicons name="stats-chart" size={24} color={color} />
                     ),
@@ -68,14 +69,8 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="settings"
                 options={{
-                    title: 'Settings',
-                    href: null, // Hiding Settings from tab bar if we only have 4 slots, or keep it if 5 slots fits.
-                    // The request said "The 4-Tab Core: Today, Progress, My Waddle, Settings". But then added Challenges.
-                    // I will swap "Progress" or keep 5 tabs. 
-                    // Wait, the prompt said: "Rebuild src/app/(tabs)/_layout.tsx to include exactly these 4 tabs... 1. Today, 2. Progress, 3. My Waddle, 4. Settings".
-                    // BUT THEN Section III.5 said "Ensure there is a Tab Icon for Challenges".
-                    // I will fit 5 tabs or swap Settings to top-corner.
-                    // Let's stick to 5 tabs for safety as avoiding hiding Settings is safer navigation-wise.
+                    title: i18n.t('tabs.settings'),
+                    href: null,
                     tabBarIcon: ({ color }) => (
                         <Ionicons name="settings-sharp" size={24} color={color} />
                     ),

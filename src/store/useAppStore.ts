@@ -38,6 +38,8 @@ interface AppState {
     setActiveBlueprint: (blueprint: Blueprint | null) => void;
 }
 
+import i18n from '../i18n';
+
 export const useAppStore = create<AppState>((set) => ({
     mascotMood: 'idle',
     setMascotMood: (mood) => set({ mascotMood: mood }),
@@ -47,9 +49,9 @@ export const useAppStore = create<AppState>((set) => ({
     setHasFinishedOnboarding: (finished) => set({ hasFinishedOnboarding: finished }),
 
     habits: [
-        { id: '1', title: 'Drink Water', icon: 'water-outline', time: 'Morning', streak: 12, completed: false },
-        { id: '2', title: 'Meditate', icon: 'leaf-outline', time: 'Morning', streak: 5, completed: true },
-        { id: '3', title: 'Deep Work', icon: 'briefcase-outline', time: 'Afternoon', streak: 3, completed: false },
+        { id: '1', title: i18n.t('habits.drink_water'), icon: 'water-outline', time: 'Morning', streak: 12, completed: false },
+        { id: '2', title: i18n.t('habits.meditate'), icon: 'leaf-outline', time: 'Morning', streak: 5, completed: true },
+        { id: '3', title: i18n.t('habits.deep_work'), icon: 'briefcase-outline', time: 'Afternoon', streak: 3, completed: false },
     ],
     addHabit: (habit) => set((state) => ({ habits: [...state.habits, habit] })),
     toggleHabit: (id) => set((state) => ({
@@ -58,4 +60,6 @@ export const useAppStore = create<AppState>((set) => ({
 
     activeBlueprint: null,
     setActiveBlueprint: (blueprint) => set({ activeBlueprint: blueprint }),
+    // Helper to refresh habits on language change? (Not requested but good practice if dynamic language switch was a feature. 
+    // Here we just follow "based on current locale" instruction).
 }));

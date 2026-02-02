@@ -7,7 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/useAppStore';
 import { format } from 'date-fns';
-import { ar } from 'date-fns/locale';
+import { ar, enUS } from 'date-fns/locale';
+import i18n, { isRTL } from '../../i18n';
 
 export default function DashboardScreen() {
     const habits = useAppStore(state => state.habits);
@@ -19,10 +20,13 @@ export default function DashboardScreen() {
     };
 
     const sections = [
-        { title: 'الصباح', data: habits.filter(h => h.time === 'Morning') },
-        { title: 'بعد الظهر', data: habits.filter(h => h.time === 'Afternoon') },
-        { title: 'المساء', data: habits.filter(h => h.time === 'Evening') },
+        { title: i18n.t('dashboard.morning'), data: habits.filter(h => h.time === 'Morning') },
+        { title: i18n.t('dashboard.afternoon'), data: habits.filter(h => h.time === 'Afternoon') },
+        { title: i18n.t('dashboard.evening'), data: habits.filter(h => h.time === 'Evening') },
     ];
+
+    // Determine current locale for dates
+    const currentDateLocale = i18n.locale.startsWith('ar') ? ar : enUS;
 
     // Generate Infinite Dates: Past 30 days + Next 335 days (Total 365)
     const today = new Date();
@@ -33,7 +37,7 @@ export default function DashboardScreen() {
         d.setDate(today.getDate() - 30 + i);
         return {
             id: i.toString(),
-            day: format(d, 'EEE', { locale: ar }), // Arabic Day (Sabt, Ahad)
+            day: format(d, 'EEE', { locale: currentDateLocale }), // Dynamic Day
             date: d.getDate(),
             fullDate: d,
             isToday: d.getDate() === currentDay && d.getMonth() === today.getMonth()
@@ -70,18 +74,21 @@ export default function DashboardScreen() {
         );
     };
 
-    const currentMonthArabic = format(new Date(), 'MMM yyyy', { locale: ar });
+    const currentMonth = format(new Date(), 'MMM yyyy', { locale: currentDateLocale });
 
     return (
         <SafeAreaView className="flex-1 bg-slate-50" edges={['top']}>
 
-            {/* Header: Title & Mascot (RTL: Flex Row Reverse) */}
-            <View className="flex-row-reverse justify-between items-center px-6 pt-2 mb-2">
-                <View className="items-end">
+            {/* Header: Title & Mascot (Dynamic RTL) */}
+            <View className={clsx(
+                "justify-between items-center px-6 pt-2 mb-2",
+                isRTL ? "flex-row-reverse" : "flex-row"
+            )}>
+                <View className={isRTL ? "items-end" : "items-start"}>
                     <Text className="text-slate-400 font-bold uppercase tracking-wider text-xs mb-1">
-                        {currentMonthArabic}
+                        {currentMonth}
                     </Text>
-                    <Text className="text-3xl font-black text-slate-800">اليوم</Text>
+                    <Text className="text-3xl font-black text-slate-800">{i18n.t('dashboard.title')}</Text>
                 </View>
                 <View className="w-10 h-10 bg-blue-50 rounded-full items-center justify-center overflow-hidden border border-blue-100">
                     <WaddleMascot size={32} mood="happy" />
@@ -93,7 +100,7 @@ export default function DashboardScreen() {
                 <FlatList
                     data={DATES}
                     horizontal
-                    inverted={true} // RTL Scrolling
+                    inverted={isRTL} // Dynamic RTL Scrolling
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 16 }}
                     keyExtractor={(item) => item.id}
@@ -111,7 +118,10 @@ export default function DashboardScreen() {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
                 renderSectionHeader={({ section: { title } }) => (
-                    <View className="mb-3 mt-4 flex-row-reverse items-center">
+                    <View className={clsx(
+                        "mb-3 mt-4 items-center",
+                        isRTL ? "flex-row-reverse" : "flex-row"
+                    )}>
                         <Text className="text-slate-500 font-bold uppercase text-xs tracking-widest px-2">
                             {title}
                         </Text>
@@ -119,7 +129,7 @@ export default function DashboardScreen() {
                 )}
                 renderItem={({ item }) => (
                     <HabitCard
-                        title={item.title}
+                        title={item.title} // Should ideally translate habitual titles too if they are static ones
                         icon={item.icon}
                         time={item.time}
                         streak={item.streak}
