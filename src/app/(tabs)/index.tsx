@@ -35,16 +35,12 @@ export default function DashboardScreen() {
         { title: 'Evening', data: habits.filter(h => h.time === 'Evening') },
     ];
 
-    // Generate week days (simple mock for current week)
-    // We want the calendar strip to look like "Productive":
-    // "MON" (small)
-    // "26" (Big)
-    // Selected: Dark pill background
+    // Generate week days (Scrollable Range: Past 3 days + Next 10 days)
     const today = new Date();
     const currentDay = today.getDate();
-    const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const weekDays = Array.from({ length: 14 }, (_, i) => {
         const d = new Date(today);
-        d.setDate(currentDay - today.getDay() + i);
+        d.setDate(today.getDate() - 3 + i); // Start 3 days ago
         return {
             day: DAYS[d.getDay()], // "Sun", "Mon"
             date: d.getDate(),
@@ -66,12 +62,12 @@ export default function DashboardScreen() {
                 </View>
             </View>
 
-            {/* Horizontal Calendar Strip (Capsule Style) */}
+            {/* Horizontal Calendar Strip (Capsule Style) - Scrollable */}
             <View className="mb-6">
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 16, width: '100%', justifyContent: 'space-between' }}
+                    contentContainerStyle={{ paddingHorizontal: 16 }}
                     className="flex-row"
                 >
                     {weekDays.map((d, index) => {
@@ -81,7 +77,7 @@ export default function DashboardScreen() {
                                 key={index}
                                 onPress={() => setSelectedDate(d.date)}
                                 className={clsx(
-                                    "items-center justify-center w-14 h-20 rounded-[28px] mx-1",
+                                    "items-center justify-center w-14 h-20 rounded-[28px] mr-2",
                                     isSelected ? "bg-[#1E293B]" : "bg-transparent"
                                 )}
                             >
@@ -107,7 +103,7 @@ export default function DashboardScreen() {
             <SectionList
                 sections={sections}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
                 renderSectionHeader={({ section: { title } }) => (
                     <View className="mb-3 mt-4 flex-row items-center">
                         <Text className="text-slate-500 font-bold uppercase text-xs tracking-widest pl-1">

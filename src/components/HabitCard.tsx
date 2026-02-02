@@ -38,13 +38,13 @@ export function HabitCard({ title, icon, time, streak, completed, onToggle }: Ha
             ref={swipeableRef}
             renderRightActions={renderRightActions}
             onSwipeableOpen={handleSwipeOpen}
-            containerStyle={{ marginBottom: 16 }}
+            containerStyle={{ marginBottom: 16, backgroundColor: '#F8FAFC', borderRadius: 32 }}
             friction={2}
             rightThreshold={60}
         >
             <View
                 className={clsx(
-                    "bg-white p-5 rounded-[32px] flex-row items-center justify-between shadow-md border h-26 w-full mb-1",
+                    "bg-white p-5 rounded-[32px] flex-row items-center justify-between shadow-md border h-28 w-full mb-1",
                     completed ? "border-green-500 bg-green-50" : "border-slate-100"
                 )}
             >

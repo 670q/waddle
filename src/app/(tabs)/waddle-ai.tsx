@@ -58,7 +58,7 @@ export default function WaddleAIScreen() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1"
-                keyboardVerticalOffset={100}
+                keyboardVerticalOffset={60}
             >
                 {/* Header */}
                 <View className="px-6 py-4 border-b border-slate-100 bg-white flex-row items-center justify-between z-10">
