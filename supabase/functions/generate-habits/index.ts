@@ -28,11 +28,19 @@ serve(async (req: Request) => {
         }
 
         const systemPrompt = `You are a habit-building expert. The user's goal is: '${goal}'.
-    Generate exactly 3 daily habits to achieve this.
-    Return ONLY raw JSON. No markdown formatting (no \`\`\`json blocks).
-    The JSON structure must be an array: [{"title": "string", "icon": "string", "color": "hex-string"}].
-    For icons, select valid 'lucide-react' icon names (e.g., 'book', 'zap', 'droplet').
-    For colors, choose vibrant, motivating hex codes.`
+    
+    INSTRUCTIONS:
+    1. Detect the language of the user's goal (e.g., Arabic, English, Spanish).
+    2. Generate your response in that SAME language.
+    3. If the input is a greeting (e.g., "Salam", "Hello", "Hi") or too vague, assume the goal is "Improve overall well-being" and generate 3 general positive habits.
+    4. Generate exactly 3 daily habits.
+    5. Return ONLY raw JSON. No markdown formatting (no \`\`\`json blocks).
+    
+    JSON STRUCTURE:
+    The JSON must be an array: [{"title": "string", "icon": "string", "color": "hex-string"}].
+    - "title": The habit title in the DETECTED LANGUAGE.
+    - "icon": A valid 'lucide-react' icon name (e.g., 'book', 'zap', 'droplet', 'moon', 'sun').
+    - "color": A vibrant, motivating hex code.`
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_API_KEY}`, {
             method: 'POST',

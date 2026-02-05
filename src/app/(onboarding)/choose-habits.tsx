@@ -27,44 +27,60 @@ export default function ChooseHabitsScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-white p-6">
+        <SafeAreaView className="flex-1 bg-white" edges={['top']}>
             <View className="flex-1">
-                <Text className="text-3xl font-bold text-slate-800 mb-2">
-                    Let's pick your first habits.
-                </Text>
-                <Text className="text-lg text-slate-500 mb-8">
-                    Start small to build momentum.
-                </Text>
+                <View className="px-6 pt-6">
+                    <Text className="text-3xl font-bold text-slate-800 mb-2">
+                        Let's pick your first habits.
+                    </Text>
+                    <Text className="text-lg text-slate-500 mb-4">
+                        Start small to build momentum.
+                    </Text>
+                </View>
 
                 <FlatList
                     data={SUGGESTED_HABITS}
                     keyExtractor={item => item.id}
+                    contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 200, paddingTop: 24 }}
+                    showsVerticalScrollIndicator={true}
                     renderItem={({ item }) => {
                         const isSelected = selected.includes(item.id);
                         return (
                             <TouchableOpacity
                                 onPress={() => toggleHabit(item.id)}
-                                className="flex-row items-center bg-white p-4 mb-3 rounded-2xl shadow-sm border border-slate-100"
+                                className={clsx(
+                                    "bg-white p-6 rounded-[32px] items-center justify-between shadow-lg border mb-5 w-full flex-row",
+                                    isSelected ? "border-[#4A90E2] bg-blue-50" : "border-slate-100"
+                                )}
+                                style={{ height: 120, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 }}
                             >
-                                <View className="bg-slate-50 w-10 h-10 rounded-full items-center justify-center mr-4">
-                                    <Ionicons
-                                        name={item.icon as any}
-                                        size={20}
-                                        color="#64748B"
-                                    />
+                                <View className="flex-row items-center flex-1">
+                                    <View className={clsx(
+                                        "w-20 h-20 rounded-[28px] items-center justify-center mr-6",
+                                        isSelected ? "bg-blue-100" : "bg-[#F1F5F9]"
+                                    )}>
+                                        <Ionicons
+                                            name={item.icon as any}
+                                            size={36}
+                                            color={isSelected ? "#4A90E2" : "#334155"}
+                                        />
+                                    </View>
+                                    <Text className={clsx(
+                                        "text-2xl font-black flex-1 mr-2",
+                                        isSelected ? "text-[#4A90E2]" : "text-slate-800"
+                                    )} numberOfLines={2}>
+                                        {item.title}
+                                    </Text>
                                 </View>
-                                <Text className="text-lg font-semibold text-slate-700 flex-1">
-                                    {item.title}
-                                </Text>
 
                                 {/* Circular Checkbox */}
                                 <View className={clsx(
-                                    "w-6 h-6 rounded-full border-2 items-center justify-center",
+                                    "w-8 h-8 rounded-full border-2 items-center justify-center",
                                     isSelected
                                         ? "bg-[#4A90E2] border-[#4A90E2]"
                                         : "bg-transparent border-slate-300"
                                 )}>
-                                    {isSelected && <Ionicons name="checkmark" size={14} color="white" />}
+                                    {isSelected && <Ionicons name="checkmark" size={18} color="white" />}
                                 </View>
                             </TouchableOpacity>
                         );
@@ -72,21 +88,23 @@ export default function ChooseHabitsScreen() {
                 />
             </View>
 
-            <TouchableOpacity
-                onPress={() => router.push('/(onboarding)/paywall-mock')}
-                className={clsx(
-                    "w-full py-4 rounded-full items-center shadow-sm",
-                    selected.length > 0 ? "bg-[#4A90E2]" : "bg-slate-200"
-                )}
-                disabled={selected.length === 0}
-            >
-                <Text className={clsx(
-                    "text-lg font-bold",
-                    selected.length > 0 ? "text-white" : "text-slate-400"
-                )}>
-                    Continue ({selected.length})
-                </Text>
-            </TouchableOpacity>
+            <View className="absolute bottom-10 left-0 right-0 px-6">
+                <TouchableOpacity
+                    onPress={() => router.push('/(onboarding)/paywall-mock')}
+                    className={clsx(
+                        "w-full py-5 rounded-full items-center shadow-xl",
+                        selected.length > 0 ? "bg-[#4A90E2]" : "bg-slate-200"
+                    )}
+                    disabled={selected.length === 0}
+                >
+                    <Text className={clsx(
+                        "text-xl font-bold",
+                        selected.length > 0 ? "text-white" : "text-slate-400"
+                    )}>
+                        Continue ({selected.length})
+                    </Text>
+                </TouchableOpacity>
+            </View>
         </SafeAreaView>
     );
 }

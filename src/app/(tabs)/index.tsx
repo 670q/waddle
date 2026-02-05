@@ -8,25 +8,28 @@ import clsx from 'clsx';
 import { useAppStore } from '../../store/useAppStore';
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
-import i18n, { isRTL } from '../../i18n';
+import { getLocales } from 'expo-localization';
 
 export default function DashboardScreen() {
     const habits = useAppStore(state => state.habits);
     const toggleHabit = useAppStore(state => state.toggleHabit);
     const [selectedDate, setSelectedDate] = useState(new Date().getDate());
 
+    // Determine Logic
+    const deviceLocales = getLocales();
+    const currentLocale = deviceLocales[0]?.languageCode ?? 'en';
+    const isArabic = currentLocale === 'ar';
+    const dateLocale = isArabic ? ar : enUS;
+
     const toggleComplete = (id: string) => {
         toggleHabit(id);
     };
 
     const sections = [
-        { title: i18n.t('dashboard.morning'), data: habits.filter(h => h.time === 'Morning') },
-        { title: i18n.t('dashboard.afternoon'), data: habits.filter(h => h.time === 'Afternoon') },
-        { title: i18n.t('dashboard.evening'), data: habits.filter(h => h.time === 'Evening') },
+        { title: isArabic ? 'الصباح' : 'Morning', data: habits.filter(h => h.time === 'Morning') },
+        { title: isArabic ? 'بعد الظهر' : 'Afternoon', data: habits.filter(h => h.time === 'Afternoon') },
+        { title: isArabic ? 'المساء' : 'Evening', data: habits.filter(h => h.time === 'Evening') },
     ];
-
-    // Determine current locale for dates
-    const currentDateLocale = i18n.locale.startsWith('ar') ? ar : enUS;
 
     // Generate Infinite Dates: Past 30 days + Next 335 days (Total 365)
     const today = new Date();
@@ -37,7 +40,7 @@ export default function DashboardScreen() {
         d.setDate(today.getDate() - 30 + i);
         return {
             id: i.toString(),
-            day: format(d, 'EEE', { locale: currentDateLocale }), // Dynamic Day
+            day: format(d, 'EEE', { locale: dateLocale }), // Dynamic Localized Day
             date: d.getDate(),
             fullDate: d,
             isToday: d.getDate() === currentDay && d.getMonth() === today.getMonth()
@@ -74,21 +77,23 @@ export default function DashboardScreen() {
         );
     };
 
-    const currentMonth = format(new Date(), 'MMM yyyy', { locale: currentDateLocale });
+    const currentMonth = format(new Date(), 'MMM yyyy', { locale: dateLocale });
 
     return (
         <SafeAreaView className="flex-1 bg-slate-50" edges={['top']}>
 
-            {/* Header: Title & Mascot (Dynamic RTL) */}
+            {/* Header: Title & Mascot */}
             <View className={clsx(
                 "justify-between items-center px-6 pt-2 mb-2",
-                isRTL ? "flex-row-reverse" : "flex-row"
+                isArabic ? "flex-row-reverse" : "flex-row"
             )}>
-                <View className={isRTL ? "items-end" : "items-start"}>
+                <View className={clsx(isArabic ? "items-end" : "items-start")}>
                     <Text className="text-slate-400 font-bold uppercase tracking-wider text-xs mb-1">
                         {currentMonth}
                     </Text>
-                    <Text className="text-3xl font-black text-slate-800">{i18n.t('dashboard.title')}</Text>
+                    <Text className="text-3xl font-black text-slate-800">
+                        {isArabic ? "اليوم" : "Today"}
+                    </Text>
                 </View>
                 <View className="w-10 h-10 bg-blue-50 rounded-full items-center justify-center overflow-hidden border border-blue-100">
                     <WaddleMascot size={32} mood="happy" />
@@ -100,7 +105,7 @@ export default function DashboardScreen() {
                 <FlatList
                     data={DATES}
                     horizontal
-                    inverted={isRTL} // Dynamic RTL Scrolling
+                    inverted={isArabic} // RTL Scrolling if Arabic
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 16 }}
                     keyExtractor={(item) => item.id}
@@ -120,7 +125,7 @@ export default function DashboardScreen() {
                 renderSectionHeader={({ section: { title } }) => (
                     <View className={clsx(
                         "mb-3 mt-4 items-center",
-                        isRTL ? "flex-row-reverse" : "flex-row"
+                        isArabic ? "flex-row-reverse" : "flex-row"
                     )}>
                         <Text className="text-slate-500 font-bold uppercase text-xs tracking-widest px-2">
                             {title}
@@ -135,6 +140,7 @@ export default function DashboardScreen() {
                         streak={item.streak}
                         completed={item.completed}
                         onToggle={() => toggleComplete(item.id)}
+                        isRTL={isArabic}
                     />
                 )}
                 stickySectionHeadersEnabled={false}

@@ -16,7 +16,11 @@ interface Message {
     isUser: boolean;
     isBlueprint?: boolean;
     blueprintData?: any[]; // Array of habits from AI
+    quickReplies?: string[]; // Interactive chips
 }
+
+// Client-Side Key
+const GEMINI_API_KEY = "AIzaSyA_vJBt2VPtdVNA186pyAcprbzzCrfc-Fw";
 
 export default function WaddleAIScreen() {
     const router = useRouter();
@@ -35,61 +39,116 @@ export default function WaddleAIScreen() {
         }, 100);
     };
 
-    const sendMessage = async () => {
-        if (!inputText.trim()) return;
+    const handleQuickReply = (reply: string) => {
+        // Auto-send the selected reply
+        sendMessage(reply);
+    };
 
-        const userText = inputText.trim();
+    const sendMessage = async (overrideText?: string) => {
+        const textToSend = overrideText || inputText;
+        if (!textToSend.trim()) return;
+
         const userMsg: Message = {
             id: Date.now().toString(),
-            text: userText,
+            text: textToSend.trim(),
             isUser: true,
         };
 
-        setMessages(prev => [...prev, userMsg]);
+        const newMessages = [...messages, userMsg];
+        setMessages(newMessages);
         setInputText('');
         scrollToBottom();
         setIsTyping(true);
 
         try {
-            console.log('Sending goal to AI:', userText);
+            // CONVERSATIONAL AI (Client-Side)
 
-            // Real AI Call
-            const { data, error } = await supabase.functions.invoke('generate-habits', {
-                body: { goal: userText }
+            // 1. Format History
+            const history = newMessages
+                .filter(m => m.id !== '1')
+                .map(m => ({
+                    role: m.isUser ? 'user' : 'model',
+                    parts: [{ text: m.text }]
+                }))
+                .slice(-10);
+
+            // 2. System Prompt (The "Happy Coach" Persona)
+            const systemInstruction = `
+            ROLE: You are "Waddle", a SUPER HAPPY, energetic, and supportive penguin coach! 🐧✨
+            TONE: Brief, fun, encouraging. Use emojis!
+            
+            CRITICAL RULES:
+            1. ASK LESS: Ask MAXIMUM 1 clarifying question before generating a plan. If you have a rough idea, just generate the plan!
+            2. PROVIDE OPTIONS: When you ask a question, YOU MUST provide 2-4 "Quick Reply" options.
+               Example: "How often?" -> Options: ["Daily ⚡️", "3x/Week", "Weekends"]
+            3. BE FAST: Don't make the user type much.
+            
+            FORMATTING:
+            - Output JSON for options/plan.
+            Structure: 
+              Running text first...
+              \`\`\`json
+              {
+                "options": ["Option 1", "Option 2"], 
+                "plan": [...] (ONLY if final plan is ready)
+              }
+              \`\`\`
+            `;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [
+                        { role: 'user', parts: [{ text: systemInstruction }] },
+                        ...history
+                    ]
+                })
             });
 
-            if (error) {
-                console.error('Supabase Function Error:', error);
-                throw error;
+            if (!response.ok) throw new Error(`Google API Error: ${response.status}`);
+
+            const data = await response.json();
+            const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!rawText) throw new Error("Empty response");
+
+            // 3. Parse Response (Text + JSON Options/Plan)
+            const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/) || rawText.match(/\{[\s\S]*\}/);
+
+            let conversationalText = rawText;
+            let parsedData: any = {};
+
+            if (jsonMatch) {
+                try {
+                    const jsonString = jsonMatch[1] || jsonMatch[0];
+                    parsedData = JSON.parse(jsonString);
+                    conversationalText = rawText.replace(jsonMatch[0], '').trim();
+                } catch (e) {
+                    console.log("JSON Parse Error:", e);
+                }
             }
 
-            console.log('AI Response:', data);
+            // Cleanup
+            conversationalText = conversationalText.replace(/```/g, '').trim();
 
-            if (data && Array.isArray(data) && data.length > 0) {
-                const aiMsg: Message = {
-                    id: (Date.now() + 1).toString(),
-                    text: i18n.t('ai.plan_card_title'), // "Plan Generated..."
-                    isUser: false,
-                    isBlueprint: true,
-                    blueprintData: data
-                };
-                setMessages(prev => [...prev, aiMsg]);
-            } else {
-                setMessages(prev => [...prev, {
-                    id: (Date.now() + 1).toString(),
-                    text: i18n.t('ai.error_msg'),
-                    isUser: false
-                }]);
-            }
-        } catch (err: any) {
-            console.error('Catch Error:', err);
-            Alert.alert('AI Error', err.message || JSON.stringify(err));
-
-            setMessages(prev => [...prev, {
+            const aiMsg: Message = {
                 id: (Date.now() + 1).toString(),
-                text: "Connection error. Please try again.", // Fallback text
+                text: conversationalText,
+                isUser: false,
+                isBlueprint: !!parsedData.plan,
+                blueprintData: parsedData.plan,
+                quickReplies: parsedData.options
+            };
+            setMessages(prev => [...prev, aiMsg]);
+
+        } catch (err: any) {
+            console.error('AI Error:', err);
+            const aiMsg: Message = {
+                id: (Date.now() + 1).toString(),
+                text: isRTL ? "حدث خطأ بسيط 😅 حاول مرة أخرى!" : "Oops, a little glitch! 🐧 Try again!",
                 isUser: false
-            }]);
+            };
+            setMessages(prev => [...prev, aiMsg]);
         } finally {
             setIsTyping(false);
             scrollToBottom();
@@ -97,18 +156,16 @@ export default function WaddleAIScreen() {
     };
 
     const handleAcceptPlan = (habits: any[]) => {
-        // Add all habits to store
         habits.forEach((h, index) => {
             addHabit({
                 id: Date.now().toString() + index,
                 title: h.title,
-                icon: h.icon || 'star', // fallback
-                time: 'Morning', // default for now, AI could provide this
+                icon: h.icon || 'star',
+                time: 'Morning',
                 streak: 0,
                 completed: false
             });
         });
-
         router.push('/(tabs)');
     };
 
@@ -117,9 +174,9 @@ export default function WaddleAIScreen() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1"
-                keyboardVerticalOffset={80} // Adjust based on tab bar height
+                keyboardVerticalOffset={80}
             >
-                {/* Header */}
+                {/* Header (Dynamic RTL) */}
                 <View className={clsx(
                     "px-6 py-4 border-b border-slate-100 bg-white items-center justify-between z-10",
                     isRTL ? "flex-row-reverse" : "flex-row"
@@ -138,7 +195,6 @@ export default function WaddleAIScreen() {
                     contentContainerStyle={{ paddingBottom: 20, paddingTop: 20 }}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Waddle Intro Animation */}
                     <View className="items-center mb-6 opacity-50">
                         <WaddleMascot size={80} mood={isTyping ? "focused" : "idle"} />
                     </View>
@@ -147,59 +203,65 @@ export default function WaddleAIScreen() {
                         <View key={msg.id} className={clsx(
                             "mb-6",
                             isRTL ? "flex-row-reverse" : "flex-row",
-                            msg.isUser ? (isRTL ? "justify-start" : "justify-end") : (isRTL ? "justify-end" : "justify-start")
+                            msg.isUser ? "justify-end" : "justify-start"
                         )}>
+
                             {!msg.isUser && (
                                 <View className={clsx(
-                                    "w-8 h-8 bg-blue-100 rounded-full items-center justify-center mb-1",
-                                    isRTL ? "ml-2 self-end" : "mr-2 self-end"
+                                    "w-8 h-8 bg-blue-100 rounded-full items-center justify-center self-end mb-1",
+                                    isRTL ? "ml-2" : "mr-2"
                                 )}>
                                     <WaddleMascot size={20} mood="happy" />
                                 </View>
                             )}
 
-                            <View
-                                className={clsx(
-                                    "p-4 rounded-2xl max-w-[85%]",
-                                    msg.isUser
-                                        ? "bg-[#4A90E2] self-end" + (isRTL ? " rounded-tl-none" : " rounded-tr-none")
-                                        : "bg-white border border-slate-100 shadow-sm self-start" + (isRTL ? " rounded-tr-none" : " rounded-tl-none")
-                                )}
-                            >
-                                <Text className={clsx(
-                                    "text-base leading-6",
-                                    isRTL ? "text-right" : "text-left",
-                                    msg.isUser ? "text-white font-medium" : "text-slate-700"
-                                )}>
-                                    {msg.text}
-                                </Text>
+                            <View className={clsx("max-w-[85%]", msg.isUser && "items-end", !msg.isUser && "items-start")}>
+                                <View
+                                    className={clsx(
+                                        "p-4 rounded-2xl",
+                                        msg.isUser
+                                            ? clsx("bg-[#4A90E2]", isRTL ? "rounded-tl-none" : "rounded-tr-none")
+                                            : clsx("bg-white border border-slate-100 shadow-sm", isRTL ? "rounded-tr-none" : "rounded-tl-none")
+                                    )}
+                                >
+                                    <Text className={clsx(
+                                        "text-base leading-6",
+                                        isRTL ? "text-right" : "text-left",
+                                        msg.isUser ? "text-white font-medium" : "text-slate-700"
+                                    )}>
+                                        {msg.text}
+                                    </Text>
+                                </View>
 
-                                {/* Blueprint Card Attachment */}
+                                {/* Quick Replies Chips (Tamara Style Buttons) */}
+                                {msg.quickReplies && (
+                                    <View className="flex-col mt-3 w-full gap-2">
+                                        {msg.quickReplies.map((reply, idx) => (
+                                            <TouchableOpacity
+                                                key={idx}
+                                                onPress={() => handleQuickReply(reply)}
+                                                className="bg-[#4A90E2] py-3 px-6 rounded-full shadow-md active:bg-[#357ABD] items-center justify-center w-full"
+                                            >
+                                                <Text className="text-white font-bold text-base text-center">{reply}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                )}
+
+                                {/* Blueprint Card */}
                                 {msg.isBlueprint && msg.blueprintData && (
-                                    <View className="mt-3 bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700">
+                                    <View className="mt-3 bg-slate-800 rounded-xl p-4 shadow-lg border border-slate-700 w-full">
                                         <View className={clsx("items-center mb-2", isRTL ? "flex-row-reverse" : "flex-row")}>
                                             <Ionicons name="sparkles" size={16} color="#FCD34D" />
-                                            <Text className={clsx(
-                                                "text-white font-bold text-xs uppercase tracking-widest",
-                                                isRTL ? "mr-2" : "ml-2"
-                                            )}>
+                                            <Text className={clsx("text-white font-bold text-xs uppercase tracking-widest", isRTL ? "mr-2" : "ml-2")}>
                                                 {i18n.t('ai.plan_card_title')}
                                             </Text>
                                         </View>
 
-                                        {/* Habits List */}
                                         {msg.blueprintData.map((habit: any, idx: number) => (
-                                            <View key={idx} className={clsx(
-                                                "items-center mb-2 bg-slate-700/50 p-2 rounded-lg",
-                                                isRTL ? "flex-row-reverse" : "flex-row"
-                                            )}>
+                                            <View key={idx} className={clsx("items-center mb-2 bg-slate-700/50 p-2 rounded-lg", isRTL ? "flex-row-reverse" : "flex-row")}>
                                                 <Ionicons name={habit.icon || 'star'} size={18} color="#FCD34D" />
-                                                <Text className={clsx(
-                                                    "text-white font-bold mx-2 flex-1",
-                                                    isRTL ? "text-right" : "text-left"
-                                                )}>
-                                                    {habit.title}
-                                                </Text>
+                                                <Text className={clsx("text-white font-bold mx-2 flex-1", isRTL ? "text-right" : "text-left")}>{habit.title}</Text>
                                             </View>
                                         ))}
 
@@ -245,7 +307,7 @@ export default function WaddleAIScreen() {
                         maxLength={500}
                     />
                     <TouchableOpacity
-                        onPress={sendMessage}
+                        onPress={() => sendMessage()}
                         disabled={!inputText.trim()}
                         className={clsx(
                             "w-12 h-12 rounded-full items-center justify-center shadow-sm",

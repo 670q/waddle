@@ -12,9 +12,10 @@ interface HabitCardProps {
     streak: number;
     completed: boolean;
     onToggle: () => void;
+    isRTL?: boolean;
 }
 
-export function HabitCard({ title, icon, time, streak, completed, onToggle }: HabitCardProps) {
+export function HabitCard({ title, icon, time, streak, completed, onToggle, isRTL = false }: HabitCardProps) {
     const swipeableRef = useRef<Swipeable>(null);
 
     const renderRightActions = (progress: any, dragX: any) => {
@@ -44,14 +45,16 @@ export function HabitCard({ title, icon, time, streak, completed, onToggle }: Ha
         >
             <View
                 className={clsx(
-                    "bg-white p-6 rounded-[32px] flex-row-reverse items-center justify-between shadow-lg border h-32 w-full mb-1",
+                    "bg-white p-6 rounded-[32px] items-center justify-between shadow-lg border h-32 w-full mb-1",
+                    isRTL ? "flex-row-reverse" : "flex-row",
                     completed ? "border-green-500 bg-green-50" : "border-slate-100"
                 )}
             >
-                <View className="flex-row-reverse items-center flex-1">
-                    {/* Icon Box - Grand Luxury (Right Side in RTL) */}
+                <View className={clsx("items-center flex-1", isRTL ? "flex-row-reverse" : "flex-row")}>
+                    {/* Icon Box */}
                     <View className={clsx(
-                        "w-20 h-20 rounded-[28px] items-center justify-center ml-6", // changed mr-6 to ml-6 for RTL
+                        "w-20 h-20 rounded-[28px] items-center justify-center",
+                        isRTL ? "ml-6" : "mr-6",
                         completed ? "bg-green-100" : "bg-[#F1F5F9]"
                     )}>
                         <Ionicons
@@ -61,18 +64,22 @@ export function HabitCard({ title, icon, time, streak, completed, onToggle }: Ha
                         />
                     </View>
 
-                    {/* Text Info (Left of Icon in RTL) */}
-                    <View className="justify-center flex-1 items-end">
+                    {/* Text Info */}
+                    <View className={clsx("justify-center flex-1", isRTL ? "items-end" : "items-start")}>
                         <Text className={clsx(
-                            "text-2xl font-black text-slate-800 mb-1 text-right",
+                            "text-2xl font-black text-slate-800 mb-1",
+                            isRTL ? "text-right" : "text-left",
                             completed && "line-through text-slate-400"
                         )}>
                             {title}
                         </Text>
-                        <View className="flex-row-reverse items-center">
+                        <View className={clsx("items-center", isRTL ? "flex-row-reverse" : "flex-row")}>
                             <Ionicons name="flame" size={12} color="#FF9F43" />
-                            <Text className="text-xs text-slate-400 font-bold uppercase tracking-wider mr-1">
-                                {streak} أيام متتالية
+                            <Text className={clsx(
+                                "text-xs text-slate-400 font-bold uppercase tracking-wider",
+                                isRTL ? "mr-1" : "ml-1"
+                            )}>
+                                {streak} {isRTL ? "أيام متتالية" : "Days Streak"}
                             </Text>
                         </View>
                     </View>
