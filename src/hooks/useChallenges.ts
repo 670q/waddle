@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/useAppStore';
+import i18n from '../i18n';
 
 // Reusing key for now (ideally in env)
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
@@ -123,10 +124,11 @@ export const useChallengesStore = create<ChallengesState>()(
                         const weeklyRow = dbChallenges.find(c => c.type === 'weekly');
 
                         if (dailyRow) {
+                            const isArabic = i18n.locale.startsWith('ar');
                             dbDaily = {
                                 id: dailyRow.id,
-                                title: dailyRow.title,
-                                description: dailyRow.description,
+                                title: (isArabic ? dailyRow.title_ar : dailyRow.title_en) || dailyRow.title,
+                                description: (isArabic ? dailyRow.description_ar : dailyRow.description_en) || dailyRow.description,
                                 type: 'daily',
                                 joinedCount: 120 + Math.floor(Math.random() * 50),
                                 timeLeft: '24:00:00',
@@ -139,10 +141,11 @@ export const useChallengesStore = create<ChallengesState>()(
                         }
 
                         if (weeklyRow) {
+                            const isArabic = i18n.locale.startsWith('ar');
                             dbWeekly = {
                                 id: weeklyRow.id,
-                                title: weeklyRow.title,
-                                description: weeklyRow.description,
+                                title: (isArabic ? weeklyRow.title_ar : weeklyRow.title_en) || weeklyRow.title,
+                                description: (isArabic ? weeklyRow.description_ar : weeklyRow.description_en) || weeklyRow.description,
                                 type: 'weekly',
                                 joinedCount: 540 + Math.floor(Math.random() * 100),
                                 timeLeft: '7 Days',
