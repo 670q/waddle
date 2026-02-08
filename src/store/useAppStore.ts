@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { MascotMood } from '../constants/mascotAssets';
 import { supabase } from '../lib/supabase';
 import i18n from '../i18n';
+import { scheduleChallengeReminder, cancelChallengeReminder } from '../lib/notifications';
 
 export interface Habit {
     id: string;
@@ -26,6 +27,7 @@ export interface Blueprint {
 export interface HabitChallenge {
     id: string;
     habit_id: string;
+    challenge_name?: string;
     start_date: string;
     end_date: string; // generated
     status: 'active' | 'completed' | 'failed';
@@ -57,7 +59,8 @@ interface AppState {
     // 21-Day Challenge
     activeChallenge: HabitChallenge | null;
     fetchActiveChallenge: () => Promise<void>;
-    startChallenge: (habitId: string) => Promise<void>;
+    startChallenge: (habitId: string, challengeName?: string) => Promise<void>;
+    quitChallenge: () => Promise<void>;
     updateChallengeProgress: (habitId: string, completed: boolean) => Promise<void>;
 }
 
@@ -267,13 +270,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
     },
 
-    startChallenge: async (habitId) => {
+    startChallenge: async (habitId, challengeName) => {
         const { userSession } = get();
         if (!userSession) return;
 
-        // 1. Deactivate any existing active challenge (optional rule: only 1 active at a time)
-        // For now, we assume frontend prevents starting new if one exists, or we force fail old one.
-        // Let's force fail old one if exists:
+        // 1. Deactivate any existing active challenge
         const { activeChallenge } = get();
         if (activeChallenge) {
             await supabase
@@ -288,6 +289,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             .insert({
                 user_id: userSession.user.id,
                 habit_id: habitId,
+                challenge_name: challengeName || 'My 21-Day Journey',
                 status: 'active',
                 current_day: 0
             })
@@ -300,8 +302,30 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
 
         set({ activeChallenge: data as HabitChallenge });
-        // Also ensure we have latest habits to reflect any UI changes
         get().fetchHabits();
+
+        // Schedule daily challenge reminder
+        scheduleChallengeReminder(challengeName);
+    },
+
+    quitChallenge: async () => {
+        const { activeChallenge, userSession } = get();
+        if (!activeChallenge || !userSession) return;
+
+        const { error } = await supabase
+            .from('habit_challenges')
+            .update({ status: 'failed' })
+            .eq('id', activeChallenge.id);
+
+        if (error) {
+            console.error("Error quitting challenge", error);
+            return;
+        }
+
+        set({ activeChallenge: null });
+
+        // Cancel challenge reminders
+        cancelChallengeReminder();
     },
 
     updateChallengeProgress: async (habitId, completed) => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, Image, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import clsx from 'clsx';
 import { useAppStore } from '../../store/useAppStore';
@@ -9,17 +9,20 @@ import { BlurView } from 'expo-blur';
 interface StartChallengeModalProps {
     visible: boolean;
     onClose: () => void;
-    onStart: (habitId: string) => void;
+    onStart: (habitId: string, challengeName?: string) => void;
 }
 
 export const StartChallengeModal = ({ visible, onClose, onStart }: StartChallengeModalProps) => {
     const { habits } = useAppStore();
     const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
+    const [challengeName, setChallengeName] = useState('');
 
     const handleStart = () => {
         if (selectedHabitId) {
-            onStart(selectedHabitId);
+            onStart(selectedHabitId, challengeName || undefined);
             onClose();
+            setChallengeName('');
+            setSelectedHabitId(null);
         }
     };
 
@@ -63,6 +66,21 @@ export const StartChallengeModal = ({ visible, onClose, onStart }: StartChalleng
                                 {i18n.t('challenge21.rule')}
                             </Text>
                         </View>
+
+                        {/* Challenge Name Input */}
+                        <Text className={clsx("text-lg font-bold text-slate-800 mb-2", isRTL ? "text-right" : "text-left")}>
+                            {i18n.t('challenge21.name_label', { defaultValue: 'Name Your Challenge' })}
+                        </Text>
+                        <TextInput
+                            value={challengeName}
+                            onChangeText={setChallengeName}
+                            placeholder={i18n.t('challenge21.name_placeholder', { defaultValue: 'My 21-Day Journey' })}
+                            placeholderTextColor="#94a3b8"
+                            className={clsx(
+                                "bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 mb-6 text-slate-800 font-medium",
+                                isRTL ? "text-right" : "text-left"
+                            )}
+                        />
 
                         {/* Habit Selection */}
                         <Text className={clsx("text-lg font-bold text-slate-800 mb-4", isRTL ? "text-right" : "text-left")}>

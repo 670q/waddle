@@ -127,3 +127,31 @@ export async function scheduleHabitReminders() {
         } as any,
     });
 }
+
+export async function scheduleChallengeReminder(challengeName?: string) {
+    // Schedule a daily reminder for active 21-day challenge at 6 PM
+    const identifier = 'challenge-reminder';
+
+    // Cancel existing challenge reminder
+    await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => { });
+
+    await Notifications.scheduleNotificationAsync({
+        identifier,
+        content: {
+            title: "🐧 Don't forget your challenge!",
+            body: challengeName
+                ? `Keep going with "${challengeName}"! You're doing great!`
+                : "Your 21-day challenge is waiting for you!",
+            sound: true,
+        },
+        trigger: {
+            hour: 18,
+            minute: 0,
+            repeats: true,
+        } as any,
+    });
+}
+
+export async function cancelChallengeReminder() {
+    await Notifications.cancelScheduledNotificationAsync('challenge-reminder').catch(() => { });
+}

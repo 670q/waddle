@@ -238,9 +238,8 @@ export default function ChallengesScreen() {
             <StartChallengeModal
                 visible={modalVisible}
                 onClose={() => setModalVisible(false)}
-                onStart={(habitId) => {
-                    startChallenge(habitId);
-                    // Optionally navigate to details immediately
+                onStart={(habitId, challengeName) => {
+                    startChallenge(habitId, challengeName);
                     setTimeout(() => router.push('/challenge/details'), 500);
                 }}
             />
