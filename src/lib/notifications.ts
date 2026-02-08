@@ -93,9 +93,9 @@ export async function scheduleHabitReminders() {
             sound: true,
         },
         trigger: {
+            type: 'daily',
             hour: 8,
             minute: 0,
-            repeats: true,
         } as any, // Type cast for simpler usage
     });
 
@@ -107,9 +107,9 @@ export async function scheduleHabitReminders() {
             sound: true,
         },
         trigger: {
+            type: 'daily',
             hour: 14,
             minute: 0,
-            repeats: true,
         } as any,
     });
 
@@ -121,9 +121,9 @@ export async function scheduleHabitReminders() {
             sound: true,
         },
         trigger: {
+            type: 'daily',
             hour: 20,
             minute: 0,
-            repeats: true,
         } as any,
     });
 }
@@ -145,9 +145,9 @@ export async function scheduleChallengeReminder(challengeName?: string) {
             sound: true,
         },
         trigger: {
+            type: 'daily',
             hour: 18,
             minute: 0,
-            repeats: true,
         } as any,
     });
 }
