@@ -5,20 +5,23 @@ import { WaddleMascot } from '../../components/WaddleMascot';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import clsx from 'clsx';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, Habit } from '../../store/useAppStore';
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { getLocales } from 'expo-localization';
 import CalendarItem from '../../components/CalendarItem';
 import { useRouter } from 'expo-router';
+import { AddHabitModal } from '../../components/AddHabitModal';
 
 export default function DashboardScreen() {
     const habits = useAppStore(state => state.habits);
     const habitLogs = useAppStore(state => state.habitLogs);
     const toggleHabit = useAppStore(state => state.toggleHabit);
     const deleteHabit = useAppStore(state => state.deleteHabit);
+    const addHabit = useAppStore(state => state.addHabit);
     const flatListRef = useRef<FlatList>(null);
     const router = useRouter();
+    const [showAddModal, setShowAddModal] = useState(false);
 
     // Determine Logic
     const deviceLocales = getLocales();
@@ -202,12 +205,30 @@ export default function DashboardScreen() {
 
             {/* Floating Add Habit Button */}
             <TouchableOpacity
-                onPress={() => router.push('/(onboarding)/choose-habits')}
+                onPress={() => setShowAddModal(true)}
                 className="absolute bottom-6 right-6 w-14 h-14 bg-indigo-600 rounded-full items-center justify-center shadow-lg"
                 style={{ elevation: 8 }}
             >
                 <Ionicons name="add" size={28} color="white" />
             </TouchableOpacity>
+
+            {/* Add Habit Modal */}
+            <AddHabitModal
+                visible={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onAdd={(habitData) => {
+                    const newHabit: Habit = {
+                        id: Date.now().toString(),
+                        title: habitData.title,
+                        icon: habitData.icon,
+                        time: habitData.time,
+                        streak: 0,
+                        completed: false,
+                        frequency: habitData.frequency
+                    };
+                    addHabit(newHabit);
+                }}
+            />
         </SafeAreaView>
     );
 }
