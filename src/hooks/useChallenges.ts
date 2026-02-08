@@ -35,8 +35,6 @@ interface ChallengesState {
     subscribeToUpdates: () => () => void;
 }
 
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
-
 export const useChallengesStore = create<ChallengesState>()(
     persist(
         (set, get) => ({
@@ -84,7 +82,6 @@ export const useChallengesStore = create<ChallengesState>()(
 
                     if (error) {
                         console.error("Failed to join challenge in DB:", error);
-                        // Optional: Rollback state here if strict consistency needed
                     }
                 } catch (e) {
                     console.error("Join challenge exception:", e);
@@ -92,26 +89,15 @@ export const useChallengesStore = create<ChallengesState>()(
             },
 
             generateChallenges: async (forceRefresh = false) => {
-                const { challenges, lastDailyGenDate, lastWeeklyGenDate } = get();
                 const now = new Date();
                 const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-                const isMonday = now.getDay() === 1; // 1 = Monday
                 const ONE_DAY = 24 * 60 * 60 * 1000;
-
-                const needsDaily = forceRefresh || lastDailyGenDate !== todayStr;
-                const needsWeekly = forceRefresh || (isMonday && lastWeeklyGenDate !== todayStr) || !challenges.find(c => c.type === 'weekly');
-
-                if (!needsDaily && !needsWeekly) {
-                    return; // Everything is up to date
-                }
+                const isArabic = i18n.locale.startsWith('ar');
 
                 set({ loading: true });
 
                 try {
-                    // 1. Fetch from Database (Priority)
-                    let dbDaily: Challenge | null = null;
-                    let dbWeekly: Challenge | null = null;
-
+                    // Always fetch from Database
                     const { data: dbChallenges, error } = await supabase
                         .from('challenges')
                         .select('*')
@@ -119,138 +105,59 @@ export const useChallengesStore = create<ChallengesState>()(
                         .lte('start_date', todayStr)
                         .gte('end_date', todayStr);
 
-                    if (dbChallenges && !error) {
-                        const dailyRow = dbChallenges.find(c => c.type === 'daily');
-                        const weeklyRow = dbChallenges.find(c => c.type === 'weekly');
+                    console.log('[Challenges] Fetched from DB:', dbChallenges?.length, 'error:', error);
 
-                        if (dailyRow) {
-                            const isArabic = i18n.locale.startsWith('ar');
-                            dbDaily = {
-                                id: dailyRow.id,
-                                title: (isArabic ? dailyRow.title_ar : dailyRow.title_en) || dailyRow.title,
-                                description: (isArabic ? dailyRow.description_ar : dailyRow.description_en) || dailyRow.description,
-                                type: 'daily',
-                                joinedCount: 120 + Math.floor(Math.random() * 50),
-                                timeLeft: '24:00:00',
-                                color: dailyRow.bg_color || 'bg-[#4A90E2]',
-                                image_url: dailyRow.image_url,
-                                joined: false,
-                                expiresAt: Date.now() + ONE_DAY,
-                                is_active: true
-                            };
-                        }
-
-                        if (weeklyRow) {
-                            const isArabic = i18n.locale.startsWith('ar');
-                            dbWeekly = {
-                                id: weeklyRow.id,
-                                title: (isArabic ? weeklyRow.title_ar : weeklyRow.title_en) || weeklyRow.title,
-                                description: (isArabic ? weeklyRow.description_ar : weeklyRow.description_en) || weeklyRow.description,
-                                type: 'weekly',
-                                joinedCount: 540 + Math.floor(Math.random() * 100),
-                                timeLeft: '7 Days',
-                                color: weeklyRow.bg_color || 'bg-slate-800',
-                                image_url: weeklyRow.image_url,
-                                joined: false,
-                                expiresAt: Date.now() + (ONE_DAY * 7)
-                            };
-                        }
+                    if (error) {
+                        console.error('[Challenges] DB Error:', error);
+                        set({ loading: false });
+                        return;
                     }
 
-                    // 2. Prepare AI Prompt for MISSING challenges only
-                    // If forcing refresh, we still prioritize DB, but we might re-fetch AI if DB is missing and we forced clear
-                    let askForDaily = needsDaily && !dbDaily;
-                    let askForWeekly = needsWeekly && !dbWeekly;
+                    // Get user's joined challenges
+                    const user = await supabase.auth.getUser();
+                    const userId = user.data.user?.id;
+                    let joinedIds = new Set<string>();
 
-                    // Optimization: If not forcing, and we have cache, don't ask AI again
-                    if (!forceRefresh) {
-                        if (!askForDaily && !askForWeekly) {
-                            // All fulfilled by DB or cache
-                            let updated = [...challenges];
-                            // If DB returned something new to replace cache, update it
-                            if (needsDaily && dbDaily) {
-                                updated = updated.filter(c => c.type !== 'daily');
-                                updated.unshift(dbDaily!);
-                                set({ lastDailyGenDate: todayStr });
-                            }
-                            if (needsWeekly && dbWeekly) {
-                                updated = updated.filter(c => c.type !== 'weekly');
-                                updated.push(dbWeekly!);
-                                set({ lastWeeklyGenDate: todayStr });
-                            }
-                            set({ challenges: updated, loading: false });
-                            return;
-                        }
-                    } else {
-                        // If forcing refresh, and DB is empty, we generally want to re-run AI only if the day changed or we really want new content.
-                        // For now, let's assume forceRefresh (from DB change) only cares about DB content. 
-                        // If DB is empty, we keep existing AI content unless it's expired.
-                        // Simplify: If forceRefresh is TRUE (DB update), we don't want to re-generate AI, just re-fetch DB.
-                        askForDaily = false;
-                        askForWeekly = false;
+                    if (userId) {
+                        const { data: userJoins } = await supabase
+                            .from('user_challenges')
+                            .select('challenge_id')
+                            .eq('user_id', userId);
+                        joinedIds = new Set(userJoins?.map(j => j.challenge_id) || []);
                     }
 
+                    // Map DB challenges to app format
+                    const mappedChallenges: Challenge[] = (dbChallenges || []).map(row => ({
+                        id: row.id,
+                        title: (isArabic ? row.title_ar : row.title_en) || row.title,
+                        description: (isArabic ? row.description_ar : row.description_en) || row.description,
+                        type: row.type,
+                        joinedCount: row.type === 'daily'
+                            ? 120 + Math.floor(Math.random() * 50)
+                            : 540 + Math.floor(Math.random() * 100),
+                        timeLeft: row.type === 'daily' ? '24:00:00' : '7 Days',
+                        color: row.bg_color || (row.type === 'daily' ? 'bg-[#4A90E2]' : 'bg-slate-800'),
+                        image_url: row.image_url,
+                        joined: joinedIds.has(row.id),
+                        expiresAt: Date.now() + (row.type === 'daily' ? ONE_DAY : ONE_DAY * 7),
+                        is_active: row.is_active
+                    }));
 
-                    if (askForDaily || askForWeekly) {
-                        // Only run AI if strictly needed (not on simple DB update)
-                        let prompt = "";
-                        if (askForDaily && askForWeekly) {
-                            prompt = `Generate 2 Habit Challenges (1 Daily, 1 Weekly).`;
-                        } else if (askForDaily) {
-                            prompt = `Generate 1 Daily Habit Challenge.`;
-                        } else if (askForWeekly) {
-                            prompt = `Generate 1 Weekly Habit Challenge.`;
-                        }
+                    // Sort: daily first, then weekly
+                    mappedChallenges.sort((a, b) => {
+                        if (a.type === 'daily' && b.type === 'weekly') return -1;
+                        if (a.type === 'weekly' && b.type === 'daily') return 1;
+                        return 0;
+                    });
 
-                        const systemPrompt = `
-                ${prompt}
-                
-                ROLE: You are Waddle, a fun Saudi Penguin coach.
-                CONTEXT: App for habits.
-                
-                TYPES:
-                - Daily: Fun, easy, 24 hours.
-                - Weekly: Harder, consistency, 7 days.
-                
-                LANGUAGE: Returns titles/descriptions in ARABIC (Modern, Motivating, Gulf/Saudi flavor).
-                
-                OUTPUT JSON ARRAY:
-                [
-                { "title": "...", "description": "...", "type": "daily" (or "weekly"), "color": "bg-[#4A90E2]" (Daily) or "bg-slate-800" (Weekly) }
-                ]
-            `;
-                        // ... (Fetch logic would go here, but omitted for simplicity in this replacement if logic unchanged)
-                        // Wait, I need to keep the fetch logic if I'm replacing the whole block. 
-                        // To minimize code churn and errors, I will just call the original logic if needed, 
-                        // but for DB updates, we usually just want to see the DB item.
+                    console.log('[Challenges] Mapped challenges:', mappedChallenges.length);
 
-                        // RE-INSERTING AI FETCH LOGIC CAREFULLY
-                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                contents: [{ role: 'user', parts: [{ text: systemPrompt }] }]
-                            })
-                        });
-
-                        const data = await response.json();
-                        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                        let aiChallenges: any[] = [];
-                        const jsonMatch = text.match(/\[.*\]/s);
-                        if (jsonMatch) {
-                            aiChallenges = JSON.parse(jsonMatch[0]);
-                        }
-
-                        // Update cache with new AI results
-                        // ... (merging below)
-                        // This is getting complicated to replace in one chunk. 
-                        // Let me stick to the logic: forceRefresh = true -> Just get from DB.
-                        // But the "updatedChallenges" logic below relies on `aiChallenges` variable if it exists.
-                    }
-
-                    // ... This replace is too risky for a single block due to local variables.
-                    // I will restart the tool call and use multi_replace to target specific lines.
+                    set({
+                        challenges: mappedChallenges,
+                        loading: false,
+                        lastDailyGenDate: todayStr,
+                        lastWeeklyGenDate: todayStr
+                    });
 
                 } catch (error) {
                     console.error("Failed to generate challenges", error);
@@ -264,12 +171,15 @@ export const useChallengesStore = create<ChallengesState>()(
                     .on(
                         'postgres_changes',
                         { event: '*', schema: 'public', table: 'challenges' },
-                        () => {
-                            // Force re-generation/fetch
+                        (payload) => {
+                            console.log('[Challenges] Realtime event:', payload.eventType);
+                            // Force re-fetch from DB
                             get().generateChallenges(true);
                         }
                     )
-                    .subscribe();
+                    .subscribe((status) => {
+                        console.log('[Challenges] Subscription status:', status);
+                    });
 
                 return () => {
                     supabase.removeChannel(channel);
