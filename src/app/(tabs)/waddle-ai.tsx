@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useRef, useEffect } from 'react';
@@ -20,17 +20,48 @@ interface Message {
 }
 
 // Client-Side Key
-const GEMINI_API_KEY = "AIzaSyA_vJBt2VPtdVNA186pyAcprbzzCrfc-Fw";
+// Client-Side Key
+// Client-Side Key Removed
+// const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "";
+
+const sanitizeFrequency = (raw: any): number[] => {
+    if (!Array.isArray(raw) || raw.length === 0) {
+        // Default to every day if missing or empty
+        return [0, 1, 2, 3, 4, 5, 6];
+    }
+
+    return raw.map(day => {
+        if (typeof day === 'number') return day;
+        if (typeof day === 'string') {
+            // Try parsing number string first "0"
+            const parsed = parseInt(day, 10);
+            if (!isNaN(parsed)) return parsed;
+
+            // Map common names (just in case AI ignores instructions)
+            const lower = day.toLowerCase();
+            if (lower.includes('sun')) return 0;
+            if (lower.includes('mon')) return 1;
+            if (lower.includes('tue')) return 2;
+            if (lower.includes('wed')) return 3;
+            if (lower.includes('thu')) return 4;
+            if (lower.includes('fri')) return 5;
+            if (lower.includes('sat')) return 6;
+        }
+        return -1;
+    }).filter(d => d >= 0 && d <= 6);
+};
 
 export default function WaddleAIScreen() {
     const router = useRouter();
     const addHabit = useAppStore(state => state.addHabit);
+    const overwriteHabits = useAppStore(state => state.overwriteHabits);
 
     const [messages, setMessages] = useState<Message[]>([
         { id: '1', text: i18n.t('ai.welcome_msg'), isUser: false }
     ]);
     const [inputText, setInputText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [processingPlan, setProcessingPlan] = useState(false); // Moved here
     const scrollViewRef = useRef<ScrollView>(null);
 
     const scrollToBottom = () => {
@@ -48,6 +79,9 @@ export default function WaddleAIScreen() {
         const textToSend = overrideText || inputText;
         if (!textToSend.trim()) return;
 
+        // Key check removed (handled by backend)
+        // if (!GEMINI_API_KEY) { ... }
+
         const userMsg: Message = {
             id: Date.now().toString(),
             text: textToSend.trim(),
@@ -61,88 +95,130 @@ export default function WaddleAIScreen() {
         setIsTyping(true);
 
         try {
-            // CONVERSATIONAL AI (Client-Side)
+            // CONVERSATIONAL AI (Edge Function)
 
-            // 1. Format History
+            // 1. Format History for Edge Function
+            // It expects: [{ role: 'user'|'model', text: '...' }]
             const history = newMessages
-                .filter(m => m.id !== '1')
                 .map(m => ({
                     role: m.isUser ? 'user' : 'model',
-                    parts: [{ text: m.text }]
+                    text: m.text
                 }))
-                .slice(-10);
+                .slice(-10); // Keep last 10 messages for context
 
-            // 2. System Prompt (The "Happy Coach" Persona)
-            const systemInstruction = `
-            ROLE: You are "Waddle", a SUPER HAPPY, energetic, and supportive penguin coach! 🐧✨
-            TONE: Brief, fun, encouraging. Use emojis!
-            
-            CRITICAL RULES:
-            1. ASK LESS: Ask MAXIMUM 1 clarifying question before generating a plan. If you have a rough idea, just generate the plan!
-            2. PROVIDE OPTIONS: When you ask a question, YOU MUST provide 2-4 "Quick Reply" options.
-               Example: "How often?" -> Options: ["Daily ⚡️", "3x/Week", "Weekends"]
-            3. BE FAST: Don't make the user type much.
-            
-            FORMATTING:
-            - Output JSON for options/plan.
-            Structure: 
-              Running text first...
-              \`\`\`json
-              {
-                "options": ["Option 1", "Option 2"], 
-                "plan": [...] (ONLY if final plan is ready)
-              }
-              \`\`\`
-            `;
-
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [
-                        { role: 'user', parts: [{ text: systemInstruction }] },
-                        ...history
-                    ]
-                })
+            // 2. Invoke Supabase Edge Function
+            const response = await supabase.functions.invoke('waddle-ai', {
+                body: {
+                    messages: history,
+                    isRTL: isRTL
+                }
             });
 
-            if (!response.ok) throw new Error(`Google API Error: ${response.status}`);
+            if (response.error) {
+                // Check if it's a Limit Exceeded error (403)
+                // supabase-js functions invoke returns error object for non-2xx usually, 
+                // but we need to check the context property or the error body if available.
+                // Actually supabase-js might wrap it. Let's check the error details.
 
-            const data = await response.json();
-            const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!rawText) throw new Error("Empty response");
+                // If the function returned 403, supabase-js populates `error`.
+                // We need to see if we can extract the body.
+                // However, standard supabase invoke might hide the body in `context`.
 
-            // 3. Parse Response (Text + JSON Options/Plan)
-            const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/) || rawText.match(/\{[\s\S]*\}/);
+                // Alternative: The Edge Function returns the error in the body.
+                // If Supabase throws, we might need to handle it.
 
-            let conversationalText = rawText;
-            let parsedData: any = {};
+                // Let's assume the error object has details.
+                // If not, we might need to use `fetch` manually or inspect `response`.
 
-            if (jsonMatch) {
+                // Correction: supabase.functions.invoke returns { data, error }.
+                // If 403, error will be populated.
+
                 try {
-                    const jsonString = jsonMatch[1] || jsonMatch[0];
-                    parsedData = JSON.parse(jsonString);
-                    conversationalText = rawText.replace(jsonMatch[0], '').trim();
+                    // Try to parse the error context/message if it's JSON string
+                    // But typically `error` is a FunctionsHttpError.
+
+                    // Let's assume standard behavior:
+                    if (response.error.context && response.error.context.status === 403) {
+                        const body = await response.error.context.json();
+                        if (body.error === 'LIMIT_EXCEEDED') {
+                            Alert.alert(
+                                isRTL ? "عفواً، انتهى رصيدك اليومي! 🐧" : "Daily Limit Reached! 🐧",
+                                isRTL
+                                    ? "تبي تسولف أكثر؟ اشترك في الباقة المدفوعة وخذ راحتك!"
+                                    : "Want to chat more? Upgrade to Premium for specific advice!",
+                                [
+                                    { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
+                                    {
+                                        text: isRTL ? "ترقية الباقة 💎" : "Upgrade 💎",
+                                        onPress: () => router.push('/paywall-mock')
+                                    }
+                                ]
+                            );
+                            return;
+                        }
+                    }
                 } catch (e) {
-                    console.log("JSON Parse Error:", e);
+                    // Silently handle parse error
                 }
+
+                throw response.error;
             }
 
-            // Cleanup
-            conversationalText = conversationalText.replace(/```/g, '').trim();
+            const { data } = response;
 
-            const aiMsg: Message = {
-                id: (Date.now() + 1).toString(),
-                text: conversationalText,
-                isUser: false,
-                isBlueprint: !!parsedData.plan,
-                blueprintData: parsedData.plan,
-                quickReplies: parsedData.options
-            };
-            setMessages(prev => [...prev, aiMsg]);
+            if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                const aiResponseText = data.candidates[0].content.parts[0].text;
 
+                // Attempt to parse JSON from the response
+                let conversationalText = aiResponseText;
+                let parsedData: { options?: string[], plan?: any[] } = {};
+
+                const jsonMatch = aiResponseText.match(/```json\n([\s\S]*?)\n```/);
+                if (jsonMatch && jsonMatch[1]) {
+                    try {
+                        parsedData = JSON.parse(jsonMatch[1]);
+                        conversationalText = aiResponseText.replace(jsonMatch[0], '').trim();
+                    } catch (jsonError) {
+                        console.warn("Failed to parse JSON from AI response:", jsonError);
+                        // If JSON parsing fails, treat the whole response as conversational text
+                    }
+                }
+
+                // Cleanup
+                conversationalText = conversationalText.replace(/```/g, '').trim();
+
+                const aiMsg: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: conversationalText,
+                    isUser: false,
+                    isBlueprint: !!parsedData.plan && Array.isArray(parsedData.plan) && parsedData.plan.length > 0,
+                    blueprintData: parsedData.plan,
+                    quickReplies: parsedData.options
+                };
+                setMessages(prev => [...prev, aiMsg]);
+
+            } else if (data?.promptFeedback?.blockReason) {
+                console.warn("AI response blocked:", data.promptFeedback.blockReason);
+                Alert.alert("AI Blocked", "Your message was blocked by the AI safety system. Please try rephrasing.");
+                const aiMsg: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: isRTL ? "رسالتك تم حظرها بواسطة نظام الأمان. حاول إعادة صياغتها." : "Your message was blocked by the AI safety system. Please try rephrasing.",
+                    isUser: false
+                };
+                setMessages(prev => [...prev, aiMsg]);
+            } else {
+                console.error("Unexpected AI response structure:", data);
+                Alert.alert("AI Error", "Received an unexpected response from the AI.");
+                const aiMsg: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: isRTL ? "حدث خطأ غير متوقع 😅 حاول مرة أخرى!" : "An unexpected error occurred! 🐧 Try again!",
+                    isUser: false
+                };
+                setMessages(prev => [...prev, aiMsg]);
+            }
         } catch (err: any) {
-            console.error('AI Error:', err);
+            console.error('AI Error Catch:', err);
+            Alert.alert("AI Error", err.message || "Unknown error"); // Show user the specific error for debugging
             const aiMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 text: isRTL ? "حدث خطأ بسيط 😅 حاول مرة أخرى!" : "Oops, a little glitch! 🐧 Try again!",
@@ -155,26 +231,35 @@ export default function WaddleAIScreen() {
         }
     };
 
-    const handleAcceptPlan = (habits: any[]) => {
-        habits.forEach((h, index) => {
-            addHabit({
-                id: Date.now().toString() + index,
-                title: h.title,
-                icon: h.icon || 'star',
-                time: 'Morning',
-                streak: 0,
-                completed: false
-            });
-        });
+    const handleAcceptPlan = async (habits: any[]) => {
+        if (processingPlan) return;
+        setProcessingPlan(true);
+
+        const newHabits = habits.map((h, index) => ({
+            id: Date.now().toString() + index,
+            title: h.title,
+            icon: h.icon || 'star',
+            time: 'Morning',
+            streak: 0,
+            completed: false,
+            frequency: sanitizeFrequency(h.frequency)
+        }));
+
+        // Append instead of overwrite
+        for (const habit of newHabits) {
+            await addHabit(habit);
+        }
+
+        setProcessingPlan(false);
         router.push('/(tabs)');
     };
 
     return (
         <SafeAreaView className="flex-1 bg-slate-50" edges={['top']}>
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 className="flex-1"
-                keyboardVerticalOffset={80}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
                 {/* Header (Dynamic RTL) */}
                 <View className={clsx(
@@ -260,18 +345,35 @@ export default function WaddleAIScreen() {
 
                                         {msg.blueprintData.map((habit: any, idx: number) => (
                                             <View key={idx} className={clsx("items-center mb-2 bg-slate-700/50 p-2 rounded-lg", isRTL ? "flex-row-reverse" : "flex-row")}>
-                                                <Ionicons name={habit.icon || 'star'} size={18} color="#FCD34D" />
-                                                <Text className={clsx("text-white font-bold mx-2 flex-1", isRTL ? "text-right" : "text-left")}>{habit.title}</Text>
+                                                <Ionicons name={habit.icon || 'star'} size={24} color="#FCD34D" />
+                                                <View className={clsx("flex-1 mx-3", isRTL ? "items-end" : "items-start")}>
+                                                    <Text className={clsx("text-white font-bold text-base", isRTL ? "text-right" : "text-left")}>
+                                                        {habit.title}
+                                                    </Text>
+                                                    {habit.details && (
+                                                        <Text className={clsx("text-slate-300 text-xs mt-0.5", isRTL ? "text-right" : "text-left")}>
+                                                            {habit.details}
+                                                        </Text>
+                                                    )}
+                                                </View>
                                             </View>
                                         ))}
 
                                         <TouchableOpacity
                                             onPress={() => handleAcceptPlan(msg.blueprintData!)}
-                                            className="bg-[#FCD34D] py-3 rounded-full items-center active:opacity-90 mt-2"
+                                            disabled={processingPlan}
+                                            className={clsx(
+                                                "py-3 rounded-full items-center active:opacity-90 mt-2",
+                                                processingPlan ? "bg-slate-300" : "bg-[#FCD34D]"
+                                            )}
                                         >
-                                            <Text className="text-slate-900 font-bold text-sm uppercase tracking-wide">
-                                                {i18n.t('ai.accept_btn')}
-                                            </Text>
+                                            {processingPlan ? (
+                                                <ActivityIndicator size="small" color="#1e293b" />
+                                            ) : (
+                                                <Text className="text-slate-900 font-bold text-sm uppercase tracking-wide">
+                                                    {i18n.t('ai.accept_btn')}
+                                                </Text>
+                                            )}
                                         </TouchableOpacity>
                                     </View>
                                 )}
@@ -316,9 +418,9 @@ export default function WaddleAIScreen() {
                     >
                         <Ionicons name="arrow-up" size={24} color="white" />
                     </TouchableOpacity>
-                </View>
+                </View >
 
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+            </KeyboardAvoidingView >
+        </SafeAreaView >
     );
 }

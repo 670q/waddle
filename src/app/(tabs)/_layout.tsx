@@ -2,9 +2,15 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import i18n from '../../i18n';
+import { useEffect } from 'react';
+import { registerForPushNotificationsAsync } from '../../lib/notifications';
 
 export default function TabLayout() {
     const insets = useSafeAreaInsets();
+
+    useEffect(() => {
+        registerForPushNotificationsAsync();
+    }, []);
 
     return (
         <Tabs

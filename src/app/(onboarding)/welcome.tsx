@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import i18n from '../../i18n';
 
 export default function WelcomeScreen() {
     const router = useRouter();
@@ -16,10 +17,10 @@ export default function WelcomeScreen() {
                 />
 
                 <Text className="text-3xl font-bold text-center text-slate-800 mb-4 px-4">
-                    Hey friend! Ready to waddle towards a better you?
+                    {i18n.t('welcome.title')}
                 </Text>
                 <Text className="text-lg text-center text-slate-500 max-w-xs px-2">
-                    Small steps lead to big changes. Let's build healthy habits together.
+                    {i18n.t('welcome.subtitle')}
                 </Text>
             </View>
 
@@ -27,7 +28,7 @@ export default function WelcomeScreen() {
                 onPress={() => router.push('/(onboarding)/focus-area')}
                 className="w-full bg-[#4A90E2] py-4 rounded-full items-center shadow-sm active:opacity-90"
             >
-                <Text className="text-white text-lg font-bold">Let's Get Started</Text>
+                <Text className="text-white text-lg font-bold">{i18n.t('welcome.btn')}</Text>
             </TouchableOpacity>
         </SafeAreaView>
     );

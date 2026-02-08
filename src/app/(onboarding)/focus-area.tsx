@@ -4,14 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import clsx from 'clsx';
 import { Ionicons } from '@expo/vector-icons';
+import i18n from '../../i18n';
 
+// Map IDs to translation keys
 const FOCUS_AREAS = [
-    { id: 'health', title: 'Health & Fitness', icon: 'fitness-outline' },
-    { id: 'work', title: 'Deep Work', icon: 'briefcase-outline' },
-    { id: 'mindfulness', title: 'Mindfulness', icon: 'leaf-outline' },
-    { id: 'sleep', title: 'Better Sleep', icon: 'moon-outline' },
-    { id: 'learning', title: 'Learning', icon: 'book-outline' },
-    { id: 'social', title: 'Social', icon: 'people-outline' },
+    { id: 'health', icon: 'fitness-outline', i18nKey: 'focus.fitness' },
+    { id: 'work', icon: 'briefcase-outline', i18nKey: 'focus.work' },
+    { id: 'mindfulness', icon: 'leaf-outline', i18nKey: 'focus.mindfulness' },
+    { id: 'sleep', icon: 'moon-outline', i18nKey: 'focus.sleep' },
+    { id: 'learning', icon: 'book-outline', i18nKey: 'focus.learning' },
+    { id: 'social', icon: 'people-outline', i18nKey: 'focus.social' },
 ];
 
 export default function FocusAreaScreen() {
@@ -30,10 +32,10 @@ export default function FocusAreaScreen() {
         <SafeAreaView className="flex-1 bg-white p-6">
             <View className="flex-1">
                 <Text className="text-3xl font-bold text-slate-800 mb-2">
-                    What brings you here today?
+                    {i18n.t('focus.title')}
                 </Text>
                 <Text className="text-lg text-slate-500 mb-8">
-                    Select all that apply.
+                    {i18n.t('focus.subtitle')}
                 </Text>
 
                 <View className="flex-row flex-wrap justify-between">
@@ -60,7 +62,7 @@ export default function FocusAreaScreen() {
                                     "text-base font-semibold text-center",
                                     isSelected ? "text-[#4A90E2]" : "text-slate-600"
                                 )}>
-                                    {item.title}
+                                    {i18n.t(item.i18nKey)}
                                 </Text>
                             </TouchableOpacity>
                         );
@@ -80,7 +82,7 @@ export default function FocusAreaScreen() {
                     "text-lg font-bold",
                     selected.length > 0 ? "text-white" : "text-slate-400"
                 )}>
-                    Continue
+                    {i18n.t('focus.continue')}
                 </Text>
             </TouchableOpacity>
         </SafeAreaView>

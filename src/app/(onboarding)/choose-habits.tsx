@@ -4,14 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import clsx from 'clsx';
 import { Ionicons } from '@expo/vector-icons';
+import i18n from '../../i18n';
+import { useAppStore } from '../../store/useAppStore';
 
+// Keys match src/i18n/index.ts
 const SUGGESTED_HABITS = [
-    { id: '1', title: 'Drink Water', icon: 'water-outline' },
-    { id: '2', title: 'Read 10 pages', icon: 'book-outline' },
-    { id: '3', title: 'Meditate 5 mins', icon: 'leaf-outline' },
-    { id: '4', title: 'Go for a walk', icon: 'walk-outline' },
-    { id: '5', title: 'No Sugar', icon: 'nutrition-outline' },
-    { id: '6', title: 'Sleep by 11 PM', icon: 'moon-outline' },
+    { id: '1', i18nKey: 'habits.drink_water', icon: 'water-outline' },
+    { id: '2', i18nKey: 'habits.read', icon: 'book-outline' },
+    { id: '3', i18nKey: 'habits.meditate', icon: 'leaf-outline' },
+    { id: '4', i18nKey: 'habits.walk', icon: 'walk-outline' },
+    { id: '5', i18nKey: 'habits.no_sugar', icon: 'nutrition-outline' },
+    { id: '6', i18nKey: 'habits.sleep', icon: 'moon-outline' },
 ];
 
 export default function ChooseHabitsScreen() {
@@ -31,10 +34,10 @@ export default function ChooseHabitsScreen() {
             <View className="flex-1">
                 <View className="px-6 pt-6">
                     <Text className="text-3xl font-bold text-slate-800 mb-2">
-                        Let's pick your first habits.
+                        {i18n.t('onboarding_habits.title')}
                     </Text>
                     <Text className="text-lg text-slate-500 mb-4">
-                        Start small to build momentum.
+                        {i18n.t('onboarding_habits.subtitle')}
                     </Text>
                 </View>
 
@@ -69,7 +72,7 @@ export default function ChooseHabitsScreen() {
                                         "text-2xl font-black flex-1 mr-2",
                                         isSelected ? "text-[#4A90E2]" : "text-slate-800"
                                     )} numberOfLines={2}>
-                                        {item.title}
+                                        {i18n.t(item.i18nKey)}
                                     </Text>
                                 </View>
 
@@ -90,7 +93,27 @@ export default function ChooseHabitsScreen() {
 
             <View className="absolute bottom-10 left-0 right-0 px-6">
                 <TouchableOpacity
-                    onPress={() => router.push('/(onboarding)/paywall-mock')}
+                    onPress={async () => {
+                        const { addHabit } = useAppStore.getState();
+
+                        // Add selected habits
+                        for (const id of selected) {
+                            const habitData = SUGGESTED_HABITS.find(h => h.id === id);
+                            if (habitData) {
+                                await addHabit({
+                                    id: `onboarding-${id}-${Date.now()}`,
+                                    title: i18n.t(habitData.i18nKey),
+                                    icon: habitData.icon,
+                                    time: 'Anytime',
+                                    streak: 0,
+                                    completed: false,
+                                    frequency: [0, 1, 2, 3, 4, 5, 6] // Daily
+                                });
+                            }
+                        }
+
+                        router.push('/(onboarding)/paywall-mock');
+                    }}
                     className={clsx(
                         "w-full py-5 rounded-full items-center shadow-xl",
                         selected.length > 0 ? "bg-[#4A90E2]" : "bg-slate-200"
@@ -101,7 +124,7 @@ export default function ChooseHabitsScreen() {
                         "text-xl font-bold",
                         selected.length > 0 ? "text-white" : "text-slate-400"
                     )}>
-                        Continue ({selected.length})
+                        {i18n.t('onboarding_habits.continue')} ({selected.length})
                     </Text>
                 </TouchableOpacity>
             </View>

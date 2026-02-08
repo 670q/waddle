@@ -18,7 +18,14 @@
       "bundleIdentifier": "com.anas.waddle.final",
       "infoPlist": {
         "NSReminderUsageDescription": "Waddle needs this to remind you of your daily habits.",
-        "NSLocalNetworkUsageDescription": "Waddle needs this to connect to the development server."
+        "NSLocalNetworkUsageDescription": "Waddle needs this to connect to the development server.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.785903617233-91vrbkqufgiq0j3up2veketjtl2dise2"
+            ]
+          }
+        ]
       }
     },
     "android": {
@@ -34,7 +41,9 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-localization"
+      "expo-localization",
+      "expo-notifications",
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "eas": {
