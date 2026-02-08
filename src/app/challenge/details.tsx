@@ -1,11 +1,10 @@
-import { View, TouchableOpacity, Text, Alert, ScrollView, Dimensions, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, Alert, ScrollView, Dimensions, StyleSheet, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../../store/useAppStore';
 import { useEffect, useRef } from 'react';
 import i18n, { isRTL } from '../../i18n';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import clsx from 'clsx';
 import { WaddleMascot } from '../../components/WaddleMascot';
 import Animated, {
@@ -21,6 +20,9 @@ const { width, height } = Dimensions.get('window');
 const STEP_HEIGHT = 100;
 const PATH_WIDTH = width - 48;
 const ZIG_ZAG_AMPLITUDE = PATH_WIDTH / 3;
+
+// Import the local gradient image asset
+const BACKGROUND_IMAGE = require('../../../assets/challenge-bg.png');
 
 const AnimatedMascot = () => {
     const bounce = useSharedValue(0);
@@ -46,22 +48,6 @@ const AnimatedMascot = () => {
         </Animated.View>
     );
 };
-
-// Reusable SVG Gradient Component
-const GradientBackground = () => (
-    <View style={StyleSheet.absoluteFill}>
-        <Svg height="100%" width="100%" style={StyleSheet.absoluteFill}>
-            <Defs>
-                <LinearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <Stop offset="0" stopColor="#6366F1" stopOpacity="1" />
-                    <Stop offset="0.5" stopColor="#8B5CF6" stopOpacity="1" />
-                    <Stop offset="1" stopColor="#A855F7" stopOpacity="1" />
-                </LinearGradient>
-            </Defs>
-            <Rect x="0" y="0" width="100%" height="100%" fill="url(#grad)" />
-        </Svg>
-    </View>
-);
 
 export default function ChallengeDetailsScreen() {
     const router = useRouter();
@@ -114,8 +100,7 @@ export default function ChallengeDetailsScreen() {
 
     if (!activeChallenge) {
         return (
-            <View style={{ flex: 1 }}>
-                <GradientBackground />
+            <ImageBackground source={BACKGROUND_IMAGE} style={{ flex: 1 }} resizeMode="cover">
                 <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                     <WaddleMascot mood="sad" size={100} />
                     <Text style={{ color: 'white', fontSize: 18, fontWeight: '600', marginTop: 20 }}>
@@ -130,7 +115,7 @@ export default function ChallengeDetailsScreen() {
                         </Text>
                     </TouchableOpacity>
                 </SafeAreaView>
-            </View>
+            </ImageBackground>
         );
     }
 
@@ -138,9 +123,7 @@ export default function ChallengeDetailsScreen() {
     const currentDay = activeChallenge.current_day;
 
     return (
-        <View style={{ flex: 1 }}>
-            <GradientBackground />
-
+        <ImageBackground source={BACKGROUND_IMAGE} style={{ flex: 1 }} resizeMode="cover">
             {/* Header - Fixed at top */}
             <SafeAreaView edges={['top']}>
                 <View style={{
@@ -324,6 +307,6 @@ export default function ChallengeDetailsScreen() {
                     );
                 })}
             </ScrollView>
-        </View>
+        </ImageBackground>
     );
 }
