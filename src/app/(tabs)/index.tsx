@@ -10,12 +10,15 @@ import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import { getLocales } from 'expo-localization';
 import CalendarItem from '../../components/CalendarItem';
+import { useRouter } from 'expo-router';
 
 export default function DashboardScreen() {
     const habits = useAppStore(state => state.habits);
     const habitLogs = useAppStore(state => state.habitLogs);
     const toggleHabit = useAppStore(state => state.toggleHabit);
+    const deleteHabit = useAppStore(state => state.deleteHabit);
     const flatListRef = useRef<FlatList>(null);
+    const router = useRouter();
 
     // Determine Logic
     const deviceLocales = getLocales();
@@ -173,12 +176,13 @@ export default function DashboardScreen() {
                 )}
                 renderItem={({ item }) => (
                     <HabitCard
-                        title={item.title} // Should ideally translate habitual titles too if they are static ones
+                        title={item.title}
                         icon={item.icon}
                         time={item.time}
                         streak={item.streak}
                         completed={habitLogs[item.id]?.includes(selectedDateStr) ?? false}
                         onToggle={() => toggleComplete(item.id)}
+                        onDelete={() => deleteHabit(item.id)}
                         isRTL={isArabic}
                     />
                 )}
@@ -195,6 +199,15 @@ export default function DashboardScreen() {
                     </View>
                 }
             />
+
+            {/* Floating Add Habit Button */}
+            <TouchableOpacity
+                onPress={() => router.push('/(onboarding)/choose-habits')}
+                className="absolute bottom-6 right-6 w-14 h-14 bg-indigo-600 rounded-full items-center justify-center shadow-lg"
+                style={{ elevation: 8 }}
+            >
+                <Ionicons name="add" size={28} color="white" />
+            </TouchableOpacity>
         </SafeAreaView>
     );
 }

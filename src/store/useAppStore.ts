@@ -49,6 +49,7 @@ interface AppState {
     isLoadingHabits: boolean;
     fetchHabits: () => Promise<void>;
     addHabit: (habit: Habit) => Promise<void>;
+    deleteHabit: (habitId: string) => Promise<void>;
     overwriteHabits: (habits: Habit[]) => Promise<void>;
     toggleHabit: (id: string, dateStr: string) => Promise<void>;
 
@@ -162,6 +163,20 @@ export const useAppStore = create<AppState>((set, get) => ({
 
             if (error) console.error("Error adding habit to DB", error);
             else get().fetchHabits();
+        }
+    },
+
+    deleteHabit: async (habitId) => {
+        // Optimistic Update
+        set((state) => ({ habits: state.habits.filter(h => h.id !== habitId) }));
+
+        const { userSession } = get();
+        if (userSession) {
+            const { error } = await supabase.from('habits').delete().eq('id', habitId);
+            if (error) {
+                console.error("Error deleting habit from DB", error);
+                get().fetchHabits(); // Refetch on error to restore state
+            }
         }
     },
 
@@ -289,7 +304,6 @@ export const useAppStore = create<AppState>((set, get) => ({
             .insert({
                 user_id: userSession.user.id,
                 habit_id: habitId,
-                challenge_name: challengeName || 'My 21-Day Journey',
                 status: 'active',
                 current_day: 0
             })
@@ -301,7 +315,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             return;
         }
 
-        set({ activeChallenge: data as HabitChallenge });
+        // Store with local challenge name (not in DB)
+        set({ activeChallenge: { ...data, challenge_name: challengeName || 'My 21-Day Journey' } as HabitChallenge });
         get().fetchHabits();
 
         // Schedule daily challenge reminder

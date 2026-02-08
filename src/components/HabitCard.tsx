@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import clsx from 'clsx';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -12,25 +12,44 @@ interface HabitCardProps {
     streak: number;
     completed: boolean;
     onToggle: () => void;
+    onDelete?: () => void;
     isRTL?: boolean;
 }
 
-export function HabitCard({ title, icon, time, streak, completed, onToggle, isRTL = false }: HabitCardProps) {
+export function HabitCard({ title, icon, time, streak, completed, onToggle, onDelete, isRTL = false }: HabitCardProps) {
     const swipeableRef = useRef<Swipeable>(null);
 
-    const renderRightActions = (progress: any, dragX: any) => {
-        return (
-            <View className="flex-1 bg-green-500 justify-center items-end px-6 rounded-3xl mb-3 h-24">
-                <Ionicons name="checkmark-sharp" size={32} color="white" />
-            </View>
-        );
-    };
+    // Swipe RIGHT to complete (green)
+    const renderRightActions = () => (
+        <View className="flex-1 bg-green-500 justify-center items-end px-6 rounded-3xl mb-3 h-24">
+            <Ionicons name="checkmark-sharp" size={32} color="white" />
+        </View>
+    );
+
+    // Swipe LEFT to delete (red)
+    const renderLeftActions = () => (
+        <View className="flex-1 bg-red-500 justify-center items-start px-6 rounded-3xl mb-3 h-24">
+            <Ionicons name="trash-outline" size={32} color="white" />
+        </View>
+    );
 
     const handleSwipeOpen = (direction: 'left' | 'right') => {
         if (direction === 'right') {
+            // Complete habit
             onToggle();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             swipeableRef.current?.close();
+        } else if (direction === 'left' && onDelete) {
+            // Delete habit with confirmation
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            Alert.alert(
+                isRTL ? 'حذف العادة؟' : 'Delete Habit?',
+                isRTL ? `هل تريد حذف "${title}"؟` : `Delete "${title}"?`,
+                [
+                    { text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel', onPress: () => swipeableRef.current?.close() },
+                    { text: isRTL ? 'حذف' : 'Delete', style: 'destructive', onPress: () => { onDelete(); } }
+                ]
+            );
         }
     };
 
@@ -38,10 +57,12 @@ export function HabitCard({ title, icon, time, streak, completed, onToggle, isRT
         <Swipeable
             ref={swipeableRef}
             renderRightActions={renderRightActions}
+            renderLeftActions={onDelete ? renderLeftActions : undefined}
             onSwipeableOpen={handleSwipeOpen}
             containerStyle={{ marginBottom: 16, backgroundColor: '#F8FAFC', borderRadius: 32 }}
             friction={2}
             rightThreshold={60}
+            leftThreshold={60}
         >
             <View
                 className={clsx(

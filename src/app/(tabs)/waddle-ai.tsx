@@ -235,17 +235,22 @@ export default function WaddleAIScreen() {
         if (processingPlan) return;
         setProcessingPlan(true);
 
-        const newHabits = habits.map((h, index) => ({
-            id: Date.now().toString() + index,
-            title: h.title,
-            icon: h.icon || 'star',
-            time: 'Morning',
-            streak: 0,
-            completed: false,
-            frequency: sanitizeFrequency(h.frequency)
-        }));
+        // Get existing habit titles to prevent duplicates
+        const existingTitles = new Set(useAppStore.getState().habits.map(h => h.title.toLowerCase()));
 
-        // Append instead of overwrite
+        const newHabits = habits
+            .filter(h => !existingTitles.has(h.title.toLowerCase())) // Filter out duplicates
+            .map((h, index) => ({
+                id: Date.now().toString() + index,
+                title: h.title,
+                icon: h.icon || 'star',
+                time: 'Morning',
+                streak: 0,
+                completed: false,
+                frequency: sanitizeFrequency(h.frequency)
+            }));
+
+        // Only add new habits that don't already exist
         for (const habit of newHabits) {
             await addHabit(habit);
         }
