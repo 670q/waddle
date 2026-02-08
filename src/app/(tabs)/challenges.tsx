@@ -40,13 +40,19 @@ const ChallengeCard = ({ challenge, onJoin }: { challenge: Challenge; onJoin: (i
         return () => clearInterval(interval);
     }, [challenge.expiresAt]);
 
+    // Extract hex color from bg_color (it might be a hex like #3B82F6 or a tailwind class like bg-[#3B82F6])
+    const getBgColor = (color: string) => {
+        if (color.startsWith('#')) return color;
+        const match = color.match(/#[0-9A-Fa-f]{6}/);
+        return match ? match[0] : '#334155'; // Default to slate-800
+    };
+
+    const bgColor = getBgColor(challenge.color);
+
     return (
         <View
-            className={clsx(
-                "rounded-3xl p-6 mb-6 shadow-lg relative overflow-hidden",
-                challenge.color
-            )}
-            style={{ height: 220 }}
+            className="rounded-3xl p-6 mb-6 shadow-lg relative overflow-hidden"
+            style={{ height: 220, backgroundColor: bgColor }}
         >
             {/* Background Image / Mascot */}
             {challenge.image_url ? (
