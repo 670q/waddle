@@ -1,11 +1,11 @@
-import { View, TouchableOpacity, Text, Alert, ScrollView, Dimensions } from 'react-native';
+import { View, TouchableOpacity, Text, Alert, ScrollView, Dimensions, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../../store/useAppStore';
 import { useEffect, useRef } from 'react';
 import i18n, { isRTL } from '../../i18n';
-import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import clsx from 'clsx';
 import { WaddleMascot } from '../../components/WaddleMascot';
 import Animated, {
@@ -46,6 +46,22 @@ const AnimatedMascot = () => {
         </Animated.View>
     );
 };
+
+// Reusable SVG Gradient Component
+const GradientBackground = () => (
+    <View style={StyleSheet.absoluteFill}>
+        <Svg height="100%" width="100%" style={StyleSheet.absoluteFill}>
+            <Defs>
+                <LinearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <Stop offset="0" stopColor="#6366F1" stopOpacity="1" />
+                    <Stop offset="0.5" stopColor="#8B5CF6" stopOpacity="1" />
+                    <Stop offset="1" stopColor="#A855F7" stopOpacity="1" />
+                </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill="url(#grad)" />
+        </Svg>
+    </View>
+);
 
 export default function ChallengeDetailsScreen() {
     const router = useRouter();
@@ -98,10 +114,8 @@ export default function ChallengeDetailsScreen() {
 
     if (!activeChallenge) {
         return (
-            <LinearGradient
-                colors={['#6366F1', '#8B5CF6', '#A855F7']}
-                style={{ flex: 1 }}
-            >
+            <View style={{ flex: 1 }}>
+                <GradientBackground />
                 <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                     <WaddleMascot mood="sad" size={100} />
                     <Text style={{ color: 'white', fontSize: 18, fontWeight: '600', marginTop: 20 }}>
@@ -116,7 +130,7 @@ export default function ChallengeDetailsScreen() {
                         </Text>
                     </TouchableOpacity>
                 </SafeAreaView>
-            </LinearGradient>
+            </View>
         );
     }
 
@@ -124,12 +138,9 @@ export default function ChallengeDetailsScreen() {
     const currentDay = activeChallenge.current_day;
 
     return (
-        <LinearGradient
-            colors={['#6366F1', '#8B5CF6', '#A855F7', '#C084FC']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ flex: 1 }}
-        >
+        <View style={{ flex: 1 }}>
+            <GradientBackground />
+
             {/* Header - Fixed at top */}
             <SafeAreaView edges={['top']}>
                 <View style={{
@@ -313,6 +324,6 @@ export default function ChallengeDetailsScreen() {
                     );
                 })}
             </ScrollView>
-        </LinearGradient>
+        </View>
     );
 }
